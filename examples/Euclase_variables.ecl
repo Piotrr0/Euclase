@@ -21,7 +21,7 @@ namespace main
     const ufloat unsigned_float = 1.5f;  // 4 bytes
 
     const double signed_double = 1.5d;    // 4 bytes
-    const double unsigned_double = 1.5d;  // 4 bytes
+    const udouble unsigned_double = 1.5d;  // 4 bytes
 
     s data 
     {

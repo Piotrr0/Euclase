@@ -1,42 +1,16 @@
+#include "lexer.h"
 #include <string.h>
 #include <stdio.h>
 
-typedef enum {
-    TOK_LBRACE, 
-    TOK_RBRACE, 
-    TOK_LPAREN, 
-    TOK_RPAREN,
-    TOK_SEMICOLON,
-
-    TOK_NUMBER,
-
-    TOK_NAMESPACE,
-    TOK_MAIN,
-    TOK_RETURN,
-    TOK_IDENTIFIER,
-
-    TOK_EOF,
-    TOK_ERROR
-
-} TokenType;
-
-typedef struct {
-    TokenType type;
-    char* text;
-    int value;
-} Token;
-
-
-typedef struct {
-    const char* source;
-    int position;
-} Lexer;
-
 Lexer lexer;
+
 void init_lexer(const char* source)
 {
+    if(source == NULL)
+        printf("source is NULL");
+
     lexer.source = source;
-    lexer.position = 0;    
+    lexer.position = 0;
 }
 
 char peek()
@@ -61,13 +35,14 @@ Token get_token()
     skip_whitespaces();
     const char c = peek();
 
-    if (c == '\0') return (Token){TOK_EOF, NULL, 0};
-
-    if (c == '{') { get(); return (Token){TOK_LBRACE, NULL, 0}; }
-    if (c == '}') { get(); return (Token){TOK_RBRACE, NULL, 0}; }
-    if (c == '(') { get(); return (Token){TOK_LPAREN, NULL, 0}; }
-    if (c == ')') { get(); return (Token){TOK_RPAREN, NULL, 0}; }
-    if (c == ';') { get(); return (Token){TOK_SEMICOLON, NULL, 0}; }
+    switch (c) {
+        case '\0': return (Token){TOK_EOF, NULL, 0};
+        case '{': get(); return (Token){TOK_LBRACE, NULL, 0};
+        case '}': get(); return (Token){TOK_RBRACE, NULL, 0};
+        case '(': get(); return (Token){TOK_LPAREN, NULL, 0};
+        case ')': get(); return (Token){TOK_RPAREN, NULL, 0};
+        case ';': get(); return (Token){TOK_SEMICOLON, NULL, 0}; 
+    }
 
     if (c >= '0' && c <= '9') {
         int value = get() - '0';
@@ -88,47 +63,52 @@ Token get_token()
         }
         buffer[i] = '\0';
 
-        if (strcmp(buffer, "return") == 0) return (Token){TOK_RETURN, NULL, 0};
-        if (strcmp(buffer, "namespace") == 0) return (Token){TOK_NAMESPACE, NULL, 0};
+        if (strcmp(buffer, "return") == 0)      return (Token){TOK_RETURN, strdup(buffer), 0};
+        if (strcmp(buffer, "namespace") == 0)   return (Token){TOK_NAMESPACE, strdup(buffer), 0};
+        if (strcmp(buffer, "void") == 0)        return (Token){TOK_VOID, strdup(buffer), 0};
+        if (strcmp(buffer, "int") == 0)         return (Token){TOK_INT, strdup(buffer), 0};
+        if (strcmp(buffer, "uint") == 0)        return (Token){TOK_UINT, strdup(buffer), 0};
+        if (strcmp(buffer, "float") == 0)       return (Token){TOK_FLOAT, strdup(buffer), 0};
+        if (strcmp(buffer, "ufloat") == 0)      return (Token){TOK_UFLOAT, strdup(buffer), 0};
+        if (strcmp(buffer, "double") == 0)      return (Token){TOK_DOUBLE, strdup(buffer), 0};
+        if (strcmp(buffer, "udouble") == 0)     return (Token){TOK_UDOUBLE, strdup(buffer), 0};
+        if (strcmp(buffer, "char") == 0)        return (Token){TOK_CHAR, strdup(buffer), 0};
+        if (strcmp(buffer, "uchar") == 0)       return (Token){TOK_UCHAR, strdup(buffer), 0};
 
         return (Token){TOK_IDENTIFIER, strdup(buffer), 0};
     }
 
     get();
-    return (Token){TOK_EOF, NULL, 0};
+    return (Token){TOK_ERROR, NULL, 0};
 }
 
 const char* token_type_name(TokenType type) {
     switch(type) {
-        case TOK_LBRACE: return "LBRACE";
-        case TOK_RBRACE: return "RBRACE";
-        case TOK_LPAREN: return "LPAREN";
-        case TOK_RPAREN: return "RPAREN";
-        case TOK_SEMICOLON: return "SEMICOLON";
-        case TOK_NUMBER: return "NUMBER";
-        case TOK_NAMESPACE: return "NAMESPACE";
-        case TOK_RETURN: return "RETURN";
-        case TOK_IDENTIFIER: return "IDENTIFIER";
-        default: return "UNKNOWN";
+        case TOK_LBRACE:        return "LBRACE";
+        case TOK_RBRACE:        return "RBRACE";
+        case TOK_LPAREN:        return "LPAREN";
+        case TOK_RPAREN:        return "RPAREN";
+        case TOK_SEMICOLON:     return "SEMICOLON";
+
+        case TOK_VOID:          return "VOID";
+        case TOK_INT:           return "INT";
+        case TOK_UINT:          return "UINT";
+        case TOK_FLOAT:         return "FLOAT";
+        case TOK_UFLOAT:        return "UFLOAT";
+        case TOK_DOUBLE:        return "DOUBLE";
+        case TOK_UDOUBLE:       return "UDOUBLE";
+        case TOK_CHAR:          return "CHAR";
+        case TOK_UCHAR:         return "UCHAR";
+
+        case TOK_IDENTIFIER:    return "IDENTIFIER";
+        case TOK_NUMBER:        return "NUMBER";
+
+        case TOK_NAMESPACE:     return "NAMESPACE";
+        case TOK_RETURN:        return "RETURN";
+        
+        case TOK_EOF:           return "EOF";
+        case TOK_ERROR:         return "ERROR";
+
+        default:                return "UNKNOWN";
     }
-}
-
-int main()
-{
-    const char* code = 
-    "namespace main {" 
-    "   int main() {"
-    "       return 0;"
-    "   }" 
-    "}";
-    
-    init_lexer(code);
-
-    Token tok;
-    do {
-        tok = get_token();
-        printf("Token: %s, text: %s, value: %d\n", token_type_name(tok.type), tok.text, tok.value);
-    } while (tok.type != TOK_EOF);
-
-    return 0;
 }
