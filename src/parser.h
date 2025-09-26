@@ -8,18 +8,27 @@ typedef enum {
     AST_FUNCTION,
     AST_BLOCK,
     AST_RETURN,
-    AST_EXPRESSION
+    AST_EXPRESSION,
+    AST_VAR_DECL,
+    AST_ASSIGN
 } ASTNodeType;
 
 typedef struct ASTNode {
     ASTNodeType type;
     char* name;
-    int value;
+
+    TokenType decl_type;
+    ValueType value_type;
+    union {
+        int int_val;
+        float float_val;
+        double double_val;
+    } value;
+    
     struct ASTNode** children;
     int child_count;
 } ASTNode;
 
-extern Token current_token;
 
 ASTNode* new_node(ASTNodeType type);
 void add_child(ASTNode* parent, ASTNode* child);

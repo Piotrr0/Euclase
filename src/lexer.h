@@ -7,6 +7,7 @@ typedef enum {
     TOK_LPAREN, 
     TOK_RPAREN,
     TOK_SEMICOLON,
+    TOK_ASSIGNMENT,
 
     TOK_VOID,
     TOK_INT,
@@ -19,7 +20,9 @@ typedef enum {
     TOK_UCHAR,
 
     TOK_IDENTIFIER,
-    TOK_NUMBER,
+    TOK_NUMBER_INT,
+    TOK_NUMBER_FLOAT,
+    TOK_NUMBER_DOUBLE,
 
     TOK_NAMESPACE,
     TOK_RETURN,
@@ -29,10 +32,23 @@ typedef enum {
 
 } TokenType;
 
+typedef enum {
+    VAL_INT,
+    VAL_FLOAT,
+    VAL_DOUBLE,
+    VAL_NONE
+} ValueType;
+
 typedef struct Token {
     TokenType type;
     char* text;
-    int value;
+
+    ValueType value_type;
+    union {
+        int int_val;
+        float float_val;
+        double double_val;
+    } value;
 } Token;
 
 
@@ -41,7 +57,28 @@ typedef struct Lexer {
     int position;
 } Lexer;
 
+typedef struct Keyword {
+    const char* name;
+    TokenType type;
+} Keyword;
+
+typedef struct Symbol {
+    char ch;
+    TokenType type;
+} Symbol;
+
+
 extern Lexer lexer;
+extern Symbol symbols[];
+extern Keyword keywords[];
+
+Token make_token(TokenType type, const char* text, ValueType vtype);
+Token make_int_token(int value);
+Token make_float_token(float value);
+Token make_double_token(double value);
+TokenType lookup_for_keyword(const char* str);
+TokenType lookup_for_symbol(char c);
+
 
 void init_lexer(const char* source);
 char peek();
