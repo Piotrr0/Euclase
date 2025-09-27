@@ -10,14 +10,22 @@ typedef enum {
     AST_RETURN,
     AST_EXPRESSION,
     AST_VAR_DECL,
-    AST_ASSIGN
+    AST_ASSIGN,
+    AST_POINTER_DECL,
+    AST_DEREFERENCE,
+    AST_ADDRESS_OF
 } ASTNodeType;
+
+typedef struct TypeInfo {
+    TokenType base_type;
+    int pointer_level;
+} TypeInfo;
 
 typedef struct ASTNode {
     ASTNodeType type;
     char* name;
 
-    TokenType decl_type;
+    TypeInfo type_info;
     Value value;
 
     struct ASTNode** children;
@@ -29,13 +37,28 @@ ASTNode* new_node(ASTNodeType type);
 void add_child(ASTNode* parent, ASTNode* child);
 void advance();
 int match(TokenType type);
+int is_type(TokenType t);
+int parse_pointer_level();
 
-int is_func_declaration();
 
+TypeInfo parse_type();
+ASTNode* parse_dereference();
 ASTNode* parse_expression();
+ASTNode* parse_address_of();
+ASTNode* parse_primary_expression();
+ASTNode* parse_dereference_expression();
+ASTNode* parse_address_of_expression();
+ASTNode* parse_identifier_expression();
+ASTNode* parse_assignment();
+ASTNode* parse_variable_declaration();
+ASTNode* parse_return();
 ASTNode* parse_statement();
 ASTNode* parse_block();
+int is_func_declaration();
+int parse_parameters();
+TypeInfo parse_type();
 ASTNode* parse_function();
+ASTNode* parse_namespace(ASTNodeType type);
 ASTNode* parse_program();
 void print_ast(ASTNode* node, int indent);
 
