@@ -75,35 +75,47 @@ Variable* get_variable(CodegenContext* ctx, const char* name)
     return NULL;
 }
 
+
+LLVMValueRef codegen_variable_load(const char* name) {
+    if (name == NULL)
+        return NULL; 
+    
+    Variable* var = get_variable(&ctx, name);
+    if (var == NULL || var->alloc == NULL) {
+        printf("Codegen: Undefined variable '%s'\n", name);
+        return NULL;
+    }
+
+    if (var->is_global) 
+        return LLVMBuildLoad2(ctx.builder, LLVMGlobalGetValueType(var->alloc), var->alloc, "global_load");
+    else
+        return LLVMBuildLoad2(ctx.builder, LLVMGetAllocatedType(var->alloc), var->alloc, "local_load");
+}
+
+LLVMValueRef codegen_constant(ASTNode* node)
+{
+    switch (node->value.type) {
+        case VAL_INT:       return LLVMConstInt(LLVMInt32TypeInContext(ctx.context), node->value.int_val, 0); break;
+        case VAL_FLOAT:     return LLVMConstReal(LLVMFloatTypeInContext(ctx.context), node->value.float_val); break;
+        case VAL_DOUBLE:    return LLVMConstReal(LLVMDoubleTypeInContext(ctx.context), node->value.double_val); break;
+        case VAL_NONE:      break;
+    }
+    return NULL;
+}
+
 LLVMValueRef codegen_expression(ASTNode *node) {
     if (node->type != AST_EXPRESSION) {
         printf("Codegen: Expected expression node\n");
         return NULL;
     }
 
-    if (node->name) {
-        Variable* var = get_variable(&ctx, node->name);
-        if (var == NULL || var->alloc == NULL) {
-            printf("Codegen: Undefined variable '%s'\n", node->name);
-            return NULL;
-        }
+    LLVMValueRef var = codegen_variable_load(node->name); 
+    if (var != NULL)
+        return var;
 
-        if (var->is_global) 
-            return LLVMBuildLoad2(ctx.builder, LLVMGlobalGetValueType(var->alloc), var->alloc, "global_load");
-        else
-            return LLVMBuildLoad2(ctx.builder, LLVMGetAllocatedType(var->alloc), var->alloc, "local_load");
-    }
-
-    switch (node->value_type) {
-        case VAL_INT:
-            return LLVMConstInt(LLVMInt32TypeInContext(ctx.context), node->value.int_val, 0);
-        case VAL_FLOAT:
-            return LLVMConstReal(LLVMFloatTypeInContext(ctx.context), node->value.float_val);
-        case VAL_DOUBLE:
-            return LLVMConstReal(LLVMDoubleTypeInContext(ctx.context), node->value.double_val);
-        case VAL_NONE:
-            break;
-    }
+    LLVMValueRef val = codegen_constant(node);
+    if(val != NULL)
+        return val;
 
     return NULL;
 }
@@ -239,6 +251,17 @@ void codegen_function(ASTNode *node) {
     }
 }
 
+void codegen_module_id(const char* name)
+{
+    if (name == NULL)
+        return;
+
+    char* module_id = malloc(strlen("namespace.") + strlen(name) + 1);
+    sprintf(module_id, "namespace.%s", name);
+    LLVMSetModuleIdentifier(ctx.module, module_id, strlen(module_id));
+    free(module_id);
+}
+
 void codegen_program(ASTNode* node)
 {
     if(node->type != AST_PROGRAM)
@@ -247,19 +270,15 @@ void codegen_program(ASTNode* node)
         return;
     }
 
-    if (node->name) {
-        char* module_id = malloc(strlen("namespace.") + strlen(node->name) + 1);
-        sprintf(module_id, "namespace.%s", node->name);
-        LLVMSetModuleIdentifier(ctx.module, module_id, strlen(module_id));
-        free(module_id);
-    }
+    codegen_module_id(node->name);
 
     for (int i = 0; i < node->child_count; i++) {
 
-        if(node->children[i]->type == AST_VAR_DECL)
-            codegen_global_variable_declaration(node->children[i]);            
-        else if (node->children[i]->type == AST_FUNCTION)
-            codegen_function(node->children[i]);
+        switch (node->type) {
+            case AST_FUNCTION: codegen_global_variable_declaration(node->children[i]); break;
+            case AST_VAR_DECL: codegen_function(node->children[i]); break;
+            default: break;
+        }
     }
 
     char* error = NULL;

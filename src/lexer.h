@@ -39,16 +39,21 @@ typedef enum {
     VAL_NONE
 } ValueType;
 
-typedef struct Token {
-    TokenType type;
-    char* text;
-
-    ValueType value_type;
+typedef struct Value
+{
+    ValueType type;
     union {
         int int_val;
         float float_val;
         double double_val;
-    } value;
+    };
+
+} Value;
+
+typedef struct Token {
+    TokenType type;
+    char* text;
+    Value value;
 } Token;
 
 

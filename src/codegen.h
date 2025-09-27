@@ -38,6 +38,10 @@ LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
 int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc, int is_global);
 Variable* get_variable(CodegenContext* ctx, const char* name);
 
+LLVMValueRef codegen_constant(ASTNode* node);
+LLVMValueRef codegen_variable_load(const char* name);
+
+void codegen_module_id(const char* name);
 void codegen_program(ASTNode* node);
 void codegen_function(ASTNode* node);
 void codegen_block(ASTNode* node);
