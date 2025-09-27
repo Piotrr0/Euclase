@@ -13,6 +13,8 @@
 
 typedef struct Variable {
     const char* name;
+    int is_global;
+
     LLVMValueRef alloc;
 } Variable;
 
@@ -33,8 +35,8 @@ void init_codegen(CodegenContext* ctx, const char* module_name);
 void cleanup_codegen(CodegenContext* ctx);
 LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
 
-int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc);
-LLVMValueRef get_variable(CodegenContext* ctx, const char* name);
+int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc, int is_global);
+Variable* get_variable(CodegenContext* ctx, const char* name);
 
 void codegen_program(ASTNode* node);
 void codegen_function(ASTNode* node);

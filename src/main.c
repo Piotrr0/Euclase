@@ -14,6 +14,7 @@ int main() {
         "    }          "
         "               "
         "    int main() {"
+        "       namespace_var = 3;"
         "       return 0;"
         "   }"
         "}";
