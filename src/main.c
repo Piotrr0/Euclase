@@ -1,27 +1,29 @@
 #include "lexer.h"
 #include "parser.h"
+#include "codegen.h"
+#include <string.h>
 
 int main() {
     const char* code = 
         "namespace main {"
-        "   float getPi() {"
+        "    float pi() {"
         "       float pi = 3.14f;"
-        "       return 3.14f;"
-        "   }"
-        ""
-        "   int main() {"
+        "       pi = 2.71f;"
+        "       return pi;"
+        "    }          "
+        "               "
+        "    int main() {"
         "       return 0;"
-        "   }"
-        ""
-        "   double getE() {"
-        "       return 2.71d;"
         "   }"
         "}";
 
     init_lexer(code);
 
     ASTNode* root = parse_program();
-    print_ast(root, 0);
+    if(root == NULL)
+        return 1;
 
+    print_ast(root, 0);
+    generate_llvm_ir(root, "main", "output.ll");
     return 0;
 }

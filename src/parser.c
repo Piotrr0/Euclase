@@ -79,7 +79,7 @@ ASTNode* parse_expression() {
 }
 
 ASTNode* parse_assignment() {
-    if (check(TOK_IDENTIFIER)) {
+    if (!check(TOK_IDENTIFIER)) {
         printf("Parse error: expected variable name\n");
         return NULL;
     }
@@ -274,7 +274,7 @@ void print_ast(ASTNode* node, int level) {
     for (int i = 0; i < level; i++) printf("  ");
     switch (node->type) {
         case AST_PROGRAM:   printf("Program (namespace %s)\n", node->name); break;
-        case AST_FUNCTION:  printf("Function (return type %s, name %s)\n", token_type_name(node->decl_type), node->name);
+        case AST_FUNCTION:  printf("Function (return type %s, name %s)\n", token_type_name(node->decl_type), node->name); break;
         case AST_BLOCK:     printf("Block\n"); break;
         case AST_RETURN:    printf("Return\n"); break;
         case AST_EXPRESSION:
