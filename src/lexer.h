@@ -72,19 +72,38 @@ extern Lexer lexer;
 extern Symbol symbols[];
 extern Keyword keywords[];
 
+
 Token make_token(TokenType type, const char* text, ValueType vtype);
+void free_token(Token* token);
+
 Token make_int_token(int value);
 Token make_float_token(float value);
 Token make_double_token(double value);
 TokenType lookup_for_keyword(const char* str);
 TokenType lookup_for_symbol(char c);
 
+void init_lexer(Lexer* lexer, const char* source);
 
-void init_lexer(const char* source);
-char peek();
-char get();
+void skip_whitespaces_from_pos(int* pos);
 void skip_whitespaces();
+
+Token lex_symbol_form_pos(int* pos);
+Token lex_symbol();
+
+Token lex_number_form_pos(int* pos);
+Token lex_number();
+
+Token lex_keyword_from_pos(int* pos);
+Token lex_keyword();
+
+Token get_token_from_pos(int* pos);
 Token get_token();
+
+Token peek_token(int steps);
+
+char peek(int* pos);
+char get(int* pos);
+
 const char* token_type_name(TokenType type);
 
 #endif

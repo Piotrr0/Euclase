@@ -42,6 +42,13 @@ Token make_token(TokenType type, const char* text, ValueType vtype) {
     return t;
 }
 
+void free_token(Token* token) {
+    if (token && token->text) {
+        free(token->text);
+        token->text = NULL;
+    }
+}
+
 Token make_int_token(int value) {
     Token t = make_token(TOK_NUMBER_INT, NULL, VAL_INT);
     t.value.int_val = value;
@@ -76,50 +83,49 @@ TokenType lookup_for_keyword(const char* str) {
     return TOK_IDENTIFIER;
 }
 
-void init_lexer(const char* source) {
-    lexer.source = source;
-    lexer.position = 0;
+void init_lexer(Lexer* lexer, const char* source) {
+    lexer->source = source;
+    lexer->position = 0;
 }
 
-char peek()
+void skip_whitespaces_from_pos(int* pos)
 {
-    return lexer.source[lexer.position];
-}
-
-char get()
-{
-    return lexer.source[lexer.position++];
+    while (peek(pos) == ' ' || peek(pos) == '\t' || peek(pos) == '\n' || peek(pos) == '\r') {
+        get(pos);
+    }
 }
 
 void skip_whitespaces()
 {
-    while (peek() == ' ' || peek() == '\t' || peek() == '\n' || peek() == '\r') {
-        get();
-    }
+    skip_whitespaces_from_pos(&lexer.position);
 }
 
-Token lex_symbol() {
-    char c = get();
+Token lex_symbol_from_pos(int* pos) {
+    char c = get(pos);
     TokenType type = lookup_for_symbol(c);
     return make_token(type, NULL, VAL_NONE);
 }
 
-Token lex_number() {
+Token lex_symbol() {
+    return lex_symbol_from_pos(&lexer.position);
+}
+
+Token lex_number_from_pos(int* pos) {
     char buffer[MAX_TOKEN_LEN];
     int i = 0;
     int has_dot = 0;
 
-    while ((isdigit(peek()) || peek() == '.') && i < MAX_TOKEN_LEN - 1) {
-        if (peek() == '.') {
+    while ((isdigit(peek(pos)) || peek(pos) == '.') && i < MAX_TOKEN_LEN - 1) {
+        if (peek(pos) == '.') {
             if (has_dot) break;
             has_dot = 1;
         }
-        buffer[i++] = get();
+        buffer[i++] = get(pos);
     }
     buffer[i] = '\0';
 
-    char suffix = peek();
-    if (suffix == 'f' || suffix == 'd') get();
+    char suffix = peek(pos);
+    if (suffix == 'f' || suffix == 'd') get(pos);
 
     if (!has_dot && suffix != 'f' && suffix != 'd') 
         return make_int_token(atoi(buffer));
@@ -131,12 +137,16 @@ Token lex_number() {
     return make_token(TOK_ERROR, NULL, VAL_NONE);
 }
 
-Token lex_keyword() {
+Token lex_number() {
+    return lex_number_from_pos(&lexer.position);
+}
+
+Token lex_keyword_from_pos(int* pos) {
     char buffer[MAX_TOKEN_LEN];
     int i = 0;
 
-    while ((isalnum(peek()) || peek() == '_') && i < MAX_TOKEN_LEN - 1) {
-        buffer[i++] = get();
+    while ((isalnum(peek(pos)) || peek(pos) == '_') && i < MAX_TOKEN_LEN - 1) {
+        buffer[i++] = get(pos);
     }
     buffer[i] = '\0';
 
@@ -144,21 +154,54 @@ Token lex_keyword() {
     return make_token(type, buffer, VAL_NONE);
 }
 
-Token get_token() {
-    skip_whitespaces();
-    char c = peek();
+Token lex_keyword() {
+    return lex_keyword_from_pos(&lexer.position);
+}
+
+Token get_token_from_pos(int* pos) {
+    skip_whitespaces_from_pos(pos);
+    char c = peek(pos);
+
+    if (c == '\0') return make_token(TOK_EOF, NULL, VAL_NONE);
 
     if (lookup_for_symbol(c) != TOK_ERROR)
-        return lex_symbol();
+        return lex_symbol_from_pos(pos);
 
     if (isdigit(c))
-        return lex_number();
+        return lex_number_from_pos(pos);
 
     if (isalpha(c) || c == '_')
-        return lex_keyword();
+        return lex_keyword_from_pos(pos);
 
-    get();
+    get(pos);
     return make_token(TOK_ERROR, NULL, VAL_NONE);
+}
+
+Token get_token() {
+    return get_token_from_pos(&lexer.position);
+}
+
+Token peek_token(int steps) {
+    int saved_pos = lexer.position;
+    Token token = make_token(TOK_EOF, NULL, VAL_NONE);
+    
+    for (int i = 0; i < steps; i++) {
+        free_token(&token);
+        token = get_token_from_pos(&saved_pos);
+        if (token.type == TOK_EOF) break;
+    }
+    
+    return token;
+}
+
+char peek(int* pos)
+{
+    return lexer.source[*pos];
+}
+
+char get(int* pos)
+{
+    return lexer.source[(*pos)++];
 }
 
 const char* token_type_name(TokenType type) {

@@ -1,6 +1,5 @@
 #include "parser.h"
 #include "lexer.h"
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,16 +35,16 @@ int match(TokenType type) {
     return 0;
 }
 
-bool check(TokenType type) {
+int check(TokenType type) {
     return current_token.type == type;
 }
 
-bool is_type(TokenType t) {
+int is_type(TokenType t) {
     switch(t) {
         case TOK_INT: case TOK_UINT: case TOK_FLOAT: case TOK_UFLOAT:
         case TOK_DOUBLE: case TOK_UDOUBLE: case TOK_CHAR: case TOK_UCHAR:
-        case TOK_VOID: return true;
-        default: return false;
+        case TOK_VOID: return 1;
+        default: return 0;
     }
 }
 
@@ -201,6 +200,26 @@ ASTNode* parse_block()
     return block;
 }
 
+int is_func_declaration()
+{
+    if(!is_type(current_token.type))
+        return 0;
+
+    Token next_token = peek_token(1);
+    if (next_token.type != TOK_IDENTIFIER) {
+        free_token(&next_token);
+        return 0;
+    }
+
+    Token third_token = peek_token(2);
+    int is_func = (third_token.type == TOK_LPAREN);
+    
+    free_token(&next_token);
+    free_token(&third_token);
+    
+    return is_func;
+}
+
 ASTNode* parse_function()
 {
     if (!is_type(current_token.type)) {
@@ -257,9 +276,34 @@ ASTNode* parse_program()
     }
 
     while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
-        ASTNode* func = parse_function();
-        if(func != NULL)
-            add_child(program, func);
+
+        if (is_func_declaration())
+        {
+            ASTNode* func = parse_function();
+            if(func != NULL)
+                add_child(program, func);
+        }
+        else if (is_type(current_token.type))
+        {
+            ASTNode* var_decl = parse_variable_declaration();
+            if(var_decl != NULL)
+            {
+                add_child(program, var_decl);
+            }
+        }
+        else if (check(TOK_IDENTIFIER))
+        {
+            ASTNode* assign = parse_assignment();
+            if(assign != NULL)
+            {
+                add_child(program, assign);
+            }
+        }
+        else
+        {
+            printf("Parse error: unexpected token in namespace\n");
+            advance();
+        }
     }
 
     if (!match(TOK_RBRACE)) {

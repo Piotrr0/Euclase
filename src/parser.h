@@ -35,6 +35,7 @@ void add_child(ASTNode* parent, ASTNode* child);
 void advance();
 int match(TokenType type);
 
+int is_func_declaration();
 
 ASTNode* parse_expression();
 ASTNode* parse_statement();

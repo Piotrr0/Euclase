@@ -15,6 +15,7 @@ void init_codegen(CodegenContext* ctx, const char* module_name) {
     ctx->context = LLVMContextCreate();
     ctx->module = LLVMModuleCreateWithNameInContext(module_name, ctx->context);
     ctx->builder = LLVMCreateBuilderInContext(ctx->context);
+    ctx->var_count = 0;
 }
 
 void cleanup_codegen(CodegenContext* ctx) {
@@ -117,6 +118,9 @@ void codegen_statement(ASTNode *node) {
 }
 
 void codegen_return(ASTNode* node) {
+    if(node->type != AST_RETURN)
+        return;
+
     if(node->child_count > 0)
     {
         LLVMValueRef ret = codegen_expression(node->children[0]);
@@ -128,6 +132,9 @@ void codegen_return(ASTNode* node) {
 }
 
 void codegen_variable_declaration(ASTNode* node) {
+    if(node->type != AST_VAR_DECL)
+        return ;
+
     LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->decl_type);
     LLVMValueRef alloca = LLVMBuildAlloca(ctx.builder, var_type, node->name);
 
@@ -147,6 +154,9 @@ void codegen_variable_declaration(ASTNode* node) {
 
 void codegen_assign(ASTNode* node)
 {
+    if(node->type != AST_ASSIGN)
+        return ;
+
     LLVMValueRef v = get_variable(&ctx, node->name);
     if(v == NULL)
         return;
