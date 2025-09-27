@@ -6,18 +6,20 @@
 int main() {
     const char* code = 
         "namespace main {"
-        "    float pi() {"
+        "    int namespace_var = 1;"
+        "    float get_pi() {"
         "       float pi = 3.14f;"
         "       pi = 2.71f;"
         "       return pi;"
         "    }          "
         "               "
         "    int main() {"
+        "       namespace_var = 3;"
         "       return 0;"
         "   }"
         "}";
 
-    init_lexer(code);
+    init_lexer(&lexer, code);
 
     ASTNode* root = parse_program();
     if(root == NULL)

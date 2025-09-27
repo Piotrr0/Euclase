@@ -1,6 +1,5 @@
 #include "parser.h"
 #include "lexer.h"
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +10,7 @@ ASTNode* new_node(ASTNodeType type) {
     ASTNode* node = malloc(sizeof(ASTNode));
     node->type = type;
     node->name = NULL;
-    node->value_type = VAL_INT;
+    node->value.type = VAL_INT;
     node->value.int_val = 0;
     node->children = NULL;
     node->child_count = 0;
@@ -36,16 +35,16 @@ int match(TokenType type) {
     return 0;
 }
 
-bool check(TokenType type) {
+int check(TokenType type) {
     return current_token.type == type;
 }
 
-bool is_type(TokenType t) {
+int is_type(TokenType t) {
     switch(t) {
         case TOK_INT: case TOK_UINT: case TOK_FLOAT: case TOK_UFLOAT:
         case TOK_DOUBLE: case TOK_UDOUBLE: case TOK_CHAR: case TOK_UCHAR:
-        case TOK_VOID: return true;
-        default: return false;
+        case TOK_VOID: return 1;
+        default: return 0;
     }
 }
 
@@ -53,8 +52,8 @@ ASTNode* parse_expression() {
     ASTNode* node = new_node(AST_EXPRESSION);
     
     if (check(TOK_NUMBER_INT) || check(TOK_NUMBER_FLOAT) || check(TOK_NUMBER_DOUBLE)){
-        node->value_type = current_token.value_type;
-        switch (current_token.value_type) {
+        node->value.type = current_token.value.type;
+        switch (current_token.value.type) {
             case VAL_INT:
                 node->value.int_val = current_token.value.int_val;
                 break;
@@ -122,7 +121,7 @@ ASTNode* parse_variable_declaration() {
     ASTNode* node = new_node(AST_VAR_DECL);
     node->name = strdup(current_token.text);
     node->decl_type = var_type;
-    node->value_type = VAL_NONE;
+    node->value.type = VAL_NONE;
     advance();
 
     if (match(TOK_ASSIGNMENT)) {
@@ -130,7 +129,7 @@ ASTNode* parse_variable_declaration() {
         if(expr != NULL)
         {
             add_child(node, expr);
-            node->value_type = expr->value_type;
+            node->value.type = expr->value.type;
         }
     }
 
@@ -201,6 +200,26 @@ ASTNode* parse_block()
     return block;
 }
 
+int is_func_declaration()
+{
+    if(!is_type(current_token.type))
+        return 0;
+
+    Token next_token = peek_token(1);
+    if (next_token.type != TOK_IDENTIFIER) {
+        free_token(&next_token);
+        return 0;
+    }
+
+    Token third_token = peek_token(2);
+    int is_func = (third_token.type == TOK_LPAREN);
+    
+    free_token(&next_token);
+    free_token(&third_token);
+    
+    return is_func;
+}
+
 ASTNode* parse_function()
 {
     if (!is_type(current_token.type)) {
@@ -257,9 +276,26 @@ ASTNode* parse_program()
     }
 
     while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
-        ASTNode* func = parse_function();
-        if(func != NULL)
-            add_child(program, func);
+
+        if (is_func_declaration())
+        {
+            ASTNode* func = parse_function();
+            if(func != NULL)
+                add_child(program, func);
+        }
+        else if (is_type(current_token.type))
+        {
+            ASTNode* var_decl = parse_variable_declaration();
+            if(var_decl != NULL)
+            {
+                add_child(program, var_decl);
+            }
+        }
+        else
+        {
+            printf("Parse error: unexpected token in namespace\n");
+            advance();
+        }
     }
 
     if (!match(TOK_RBRACE)) {
@@ -281,7 +317,7 @@ void print_ast(ASTNode* node, int level) {
             if (node->name) {
                 printf("Identifier(%s)\n", node->name);
             } else {
-                switch (node->value_type) {
+                switch (node->value.type) {
                     case VAL_INT:
                         printf("Number(int: %d)\n", node->value.int_val);
                         break;

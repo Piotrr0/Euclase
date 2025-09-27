@@ -18,13 +18,8 @@ typedef struct ASTNode {
     char* name;
 
     TokenType decl_type;
-    ValueType value_type;
-    union {
-        int int_val;
-        float float_val;
-        double double_val;
-    } value;
-    
+    Value value;
+
     struct ASTNode** children;
     int child_count;
 } ASTNode;
@@ -35,6 +30,7 @@ void add_child(ASTNode* parent, ASTNode* child);
 void advance();
 int match(TokenType type);
 
+int is_func_declaration();
 
 ASTNode* parse_expression();
 ASTNode* parse_statement();
