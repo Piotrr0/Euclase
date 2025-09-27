@@ -291,14 +291,6 @@ ASTNode* parse_program()
                 add_child(program, var_decl);
             }
         }
-        else if (check(TOK_IDENTIFIER))
-        {
-            ASTNode* assign = parse_assignment();
-            if(assign != NULL)
-            {
-                add_child(program, assign);
-            }
-        }
         else
         {
             printf("Parse error: unexpected token in namespace\n");

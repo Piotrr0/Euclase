@@ -1,5 +1,6 @@
 #include "codegen.h"
 #include "parser.h"
+#include <llvm-c/Core.h>
 #include <llvm-c/Types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -138,8 +139,6 @@ void codegen_variable_declaration(ASTNode* node) {
     LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->decl_type);
     LLVMValueRef alloca = LLVMBuildAlloca(ctx.builder, var_type, node->name);
 
-    add_variable(&ctx, node->name, alloca);
-
     if(node->child_count > 0)
     {
         LLVMValueRef init_val = codegen_expression(node->children[0]);
@@ -150,6 +149,30 @@ void codegen_variable_declaration(ASTNode* node) {
 
         LLVMBuildStore(ctx.builder, init_val, alloca);
     }
+
+    add_variable(&ctx, node->name, alloca);
+}
+
+void codegen_global_variable_declaration(ASTNode* node) {
+    if(node->type != AST_VAR_DECL)
+    {
+        return;
+    }
+
+    LLVMTypeRef var_type = token_type_to_llvm_type(&ctx,node->decl_type);
+    LLVMValueRef global_var = LLVMAddGlobal(ctx.module, var_type, node->name);
+
+    if(node->children > 0)
+    {
+        LLVMValueRef init_val = codegen_expression(node->children[0]);
+        if (init_val != NULL) 
+        {
+            LLVMSetInitializer(global_var, init_val);
+        }
+
+        return;
+    }
+    add_variable(&ctx, node->name, global_var);
 }
 
 void codegen_assign(ASTNode* node)
@@ -227,7 +250,11 @@ void codegen_program(ASTNode* node)
     }
 
     for (int i = 0; i < node->child_count; i++) {
-        codegen_function(node->children[i]);
+
+        if(node->children[i]->type == AST_VAR_DECL)
+            codegen_global_variable_declaration(node->children[i]);            
+        else if (node->children[i]->type == AST_FUNCTION)
+            codegen_function(node->children[i]);
     }
 
     char* error = NULL;
