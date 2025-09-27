@@ -274,9 +274,9 @@ void codegen_program(ASTNode* node)
 
     for (int i = 0; i < node->child_count; i++) {
 
-        switch (node->type) {
-            case AST_FUNCTION: codegen_global_variable_declaration(node->children[i]); break;
-            case AST_VAR_DECL: codegen_function(node->children[i]); break;
+        switch (node->children[i]->type) {
+            case AST_FUNCTION: codegen_function(node->children[i]); break;
+            case AST_VAR_DECL: codegen_global_variable_declaration(node->children[i]); break;
             default: break;
         }
     }

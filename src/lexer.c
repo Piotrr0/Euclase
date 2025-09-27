@@ -35,10 +35,11 @@ Symbol symbols[] = {
 
 Token make_token(TokenType type, const char* text, ValueType vtype) {
     Token t;
+    memset(&t, 0, sizeof(t));
+    
     t.type = type;
     t.text = text ? strdup(text) : NULL;
     t.value.type = vtype;
-    memset(&t.value, 0, sizeof(t.value));
     return t;
 }
 
