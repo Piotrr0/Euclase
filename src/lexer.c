@@ -30,6 +30,8 @@ Symbol symbols[] = {
     {')', TOK_RPAREN},
     {';', TOK_SEMICOLON},
     {'=', TOK_ASSIGNMENT},
+    {'*', TOK_ASTERISK},
+    {'&', TOK_AMPERSAND},
     {'\0',TOK_EOF}
 };
 
@@ -213,6 +215,8 @@ const char* token_type_name(TokenType type) {
         case TOK_RPAREN:        return "RPAREN";
         case TOK_SEMICOLON:     return "SEMICOLON";
         case TOK_ASSIGNMENT:    return "ASSIGNMENT";
+        case TOK_ASTERISK:      return "ASTERISK";
+        case TOK_AMPERSAND:     return "AMPERSAND";
 
         case TOK_VOID:          return "VOID";
         case TOK_INT:           return "INT";

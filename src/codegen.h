@@ -6,6 +6,7 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
+#include <llvm-c/Types.h>
 
 #include "parser.h"
 
@@ -14,6 +15,9 @@
 typedef struct Variable {
     const char* name;
     int is_global;
+
+    TokenType base_type;
+    int pointer_level;
 
     LLVMValueRef alloc;
 } Variable;
@@ -35,7 +39,7 @@ void init_codegen(CodegenContext* ctx, const char* module_name);
 void cleanup_codegen(CodegenContext* ctx);
 LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
 
-int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc, int is_global);
+int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc, int is_global, TokenType base_type, int pointer_level);
 Variable* get_variable(CodegenContext* ctx, const char* name);
 
 LLVMValueRef codegen_constant(ASTNode* node);
@@ -48,11 +52,14 @@ void codegen_block(ASTNode* node);
 void codegen_statement(ASTNode* node);
 void codegen_return(ASTNode* node);
 void codegen_variable_declaration(ASTNode* node);
+void codegen_ptr_declaration(ASTNode* node);
 void codegen_global_variable_declaration(ASTNode* node);
+void codegen_global_ptr_declaration(ASTNode* node);
 void codegen_assign(ASTNode* node);
 
 LLVMValueRef codegen_expression(ASTNode* node);
-
+LLVMValueRef codegen_dereference(ASTNode* node);
+LLVMValueRef codegen_address_of(ASTNode* node);
 
 void generate_llvm_ir(ASTNode* ast, const char* module_name, const char* output_filename);
 

@@ -8,6 +8,8 @@ typedef enum {
     TOK_RPAREN,
     TOK_SEMICOLON,
     TOK_ASSIGNMENT,
+    TOK_ASTERISK,
+    TOK_AMPERSAND,
 
     TOK_VOID,
     TOK_INT,
