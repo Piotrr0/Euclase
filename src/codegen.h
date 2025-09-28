@@ -6,6 +6,7 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitWriter.h>
+#include <llvm-c/Types.h>
 
 #include "parser.h"
 
@@ -49,6 +50,7 @@ void codegen_statement(ASTNode* node);
 void codegen_return(ASTNode* node);
 void codegen_variable_declaration(ASTNode* node);
 void codegen_global_variable_declaration(ASTNode* node);
+void codegen_global_ptr_declaration(ASTNode* node);
 void codegen_assign(ASTNode* node);
 
 LLVMValueRef codegen_expression(ASTNode* node);

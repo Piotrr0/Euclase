@@ -192,6 +192,34 @@ void codegen_global_variable_declaration(ASTNode* node) {
     add_variable(&ctx, node->name, global_var, 1);
 }
 
+void codegen_global_ptr_declaration(ASTNode *node) {
+    if(node->type != AST_POINTER_DECL)
+        return;
+
+    LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
+    for (int i = 0; i < node->type_info.pointer_level; i++) {
+        var_type = LLVMPointerType(var_type, 0);
+    }
+
+    LLVMValueRef global_var = LLVMAddGlobal(ctx.module, var_type, node->name);
+
+    if(node->children > 0)
+    {
+        ASTNode* init = node->children[0];
+        if(node->children[0]->type == AST_ADDRESS_OF)
+        {
+            ASTNode* id = init->children[0];
+            Variable* var = get_variable(&ctx, id->name);
+            LLVMSetInitializer(global_var, var->alloc);
+        }
+        else 
+        {
+            LLVMSetInitializer(global_var, LLVMConstPointerNull(var_type));
+        }
+    }
+    add_variable(&ctx, node->name, global_var, 1);
+}
+
 void codegen_assign(ASTNode* node)
 {
     if(node->type != AST_ASSIGN)
@@ -274,8 +302,9 @@ void codegen_program(ASTNode* node)
     for (int i = 0; i < node->child_count; i++) {
 
         switch (node->children[i]->type) {
-            case AST_FUNCTION: codegen_function(node->children[i]); break;
-            case AST_VAR_DECL: codegen_global_variable_declaration(node->children[i]); break;
+            case AST_FUNCTION:      codegen_function(node->children[i]); break;
+            case AST_VAR_DECL:      codegen_global_variable_declaration(node->children[i]); break;
+            case AST_POINTER_DECL:  codegen_global_ptr_declaration(node->children[i]); break;
             default: break;
         }
     }
