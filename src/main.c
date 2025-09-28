@@ -37,7 +37,8 @@ int main() {
         "    int* ptr_x = &x;"
         "    int** ptr_ptr = &ptr_x;"
         "    int main() {"
-        "        return 0;"
+        "                      "
+        "        return *ptr_x;"
         "    }"
         "}";
 

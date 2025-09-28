@@ -122,13 +122,12 @@ ASTNode* parse_dereference_expression() {
     if (!match(TOK_ASTERISK))
         return NULL;
 
-    ASTNode* node = new_node(AST_DEREFERENCE);
     ASTNode* expr = parse_expression();
     if (!expr) {
-        free(node);
         return NULL;
     }
 
+    ASTNode* node = new_node(AST_DEREFERENCE);
     add_child(node, expr);
     return node;
 }
@@ -267,7 +266,7 @@ ASTNode* parse_statement() {
 
     printf("Parse error: unknown statement\n");
     advance();
-    return new_node(AST_EXPRESSION);
+    return NULL; 
 }
 
 ASTNode* parse_block()
@@ -428,6 +427,7 @@ ASTNode* parse_program()
 
 void print_ast(ASTNode* node, int level) 
 {
+    if(node == NULL) return;
     for (int i = 0; i < level; i++) printf("  ");
 
     switch (node->type) {
