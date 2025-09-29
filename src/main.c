@@ -64,6 +64,6 @@ int main() {
         return 1;
 
     print_ast(root, 0);
-    //generate_llvm_ir(root, "main", "output.ll");
+    generate_llvm_ir(root, "main", "output.ll");
     return 0;
 }

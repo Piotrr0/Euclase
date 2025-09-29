@@ -105,6 +105,86 @@ LLVMValueRef codegen_constant(ASTNode* node)
     return NULL;
 }
 
+LLVMValueRef codegen_cast(ASTNode* node) 
+{
+    if(node->type != AST_CAST || node->child_count == 0)
+        return NULL;
+
+    LLVMValueRef value = codegen_expression(node->children[0]);
+    if(value == NULL)
+    {
+        printf("Codegen: Failed to generate expression for cast\n");
+        return NULL;
+    }
+
+    LLVMTypeRef from_type = LLVMTypeOf(value);
+    LLVMTypeRef to_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
+
+    for (int i = 0; i < node->type_info.pointer_level; i++) {
+        to_type = LLVMPointerType(to_type, 0);
+    }
+
+    if (!are_types_compatible(from_type, to_type)) {
+        printf("Codegen: Incompatible cast\n");
+        return NULL;
+    }
+    
+    return generate_cast_instruction(value, from_type, to_type, "cast_result");
+}
+
+int are_types_compatible(LLVMTypeRef form_type, LLVMTypeRef to_type)
+{
+    LLVMTypeKind from_kind = LLVMGetTypeKind(form_type);
+    LLVMTypeKind to_kind = LLVMGetTypeKind(to_type);
+
+    if(from_kind == to_kind)
+        return 1;
+
+    if (from_kind == LLVMPointerTypeKind && to_kind == LLVMPointerTypeKind)
+        return 1;
+
+    if ((from_kind == LLVMFloatTypeKind || from_kind == LLVMDoubleTypeKind) && (to_kind == LLVMFloatTypeKind || to_kind == LLVMDoubleTypeKind))
+        return 1;
+
+    if ((from_kind == LLVMIntegerTypeKind && (to_kind == LLVMFloatTypeKind || to_kind == LLVMDoubleTypeKind)) || ((from_kind == LLVMFloatTypeKind || from_kind == LLVMDoubleTypeKind) && to_kind == LLVMIntegerTypeKind))
+        return 1;
+
+    if ((from_kind == LLVMIntegerTypeKind && to_kind == LLVMPointerTypeKind) || (from_kind == LLVMPointerTypeKind && to_kind == LLVMIntegerTypeKind)) 
+        return 1;
+    
+    return 0;
+}
+
+LLVMValueRef generate_cast_instruction(LLVMValueRef value, LLVMTypeRef from_type, LLVMTypeRef to_type, const char* name) {
+    if (from_type == to_type) return value;
+    
+    LLVMTypeKind from_kind = LLVMGetTypeKind(from_type);
+    LLVMTypeKind to_kind = LLVMGetTypeKind(to_type);
+    
+    if (from_kind == LLVMPointerTypeKind && to_kind == LLVMPointerTypeKind)
+        return LLVMBuildBitCast(ctx.builder, value, to_type, name);
+    
+    if (from_kind == LLVMIntegerTypeKind && to_kind == LLVMPointerTypeKind)
+        return LLVMBuildIntToPtr(ctx.builder, value, to_type, name);
+    
+    if (from_kind == LLVMPointerTypeKind && to_kind == LLVMIntegerTypeKind)
+        return LLVMBuildPtrToInt(ctx.builder, value, to_type, name);
+    
+    if (from_kind == LLVMFloatTypeKind && to_kind == LLVMDoubleTypeKind)
+        return LLVMBuildFPExt(ctx.builder, value, to_type, name);
+    
+    if (from_kind == LLVMDoubleTypeKind && to_kind == LLVMFloatTypeKind)
+        return LLVMBuildFPTrunc(ctx.builder, value, to_type, name);
+    
+    if (from_kind == LLVMIntegerTypeKind && (to_kind == LLVMFloatTypeKind || to_kind == LLVMDoubleTypeKind))
+        return LLVMBuildSIToFP(ctx.builder, value, to_type, name);
+    
+    if ((from_kind == LLVMFloatTypeKind || from_kind == LLVMDoubleTypeKind) && to_kind == LLVMIntegerTypeKind)
+        return LLVMBuildFPToSI(ctx.builder, value, to_type, name);
+    
+    return NULL;
+}
+
 LLVMValueRef codegen_expression(ASTNode *node) {
     if (!node) return NULL;
 
@@ -114,6 +194,9 @@ LLVMValueRef codegen_expression(ASTNode *node) {
 
         case AST_DEREFERENCE:
             return codegen_dereference(node);
+
+        case AST_CAST:
+            return codegen_cast(node);
 
         case AST_EXPRESSION:
             if (node->name)
