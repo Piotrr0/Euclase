@@ -147,18 +147,83 @@ ASTNode* parse_address_of_expression() {
     return node;
 }
 
+
+// int x = sum(10, 10); 
+// int x = sum(10, &a);
+ASTNode* parse_function_call()
+{
+    if(!check(TOK_IDENTIFIER)) {
+        return NULL;
+    }
+
+    char* name = strdup(current_token.text);
+    advance();
+
+    if(!match(TOK_LPAREN)) {
+        free(name);
+        return NULL;
+    }
+
+    ASTNode* func_call_node = new_node(AST_FUNC_CALL);
+    if(func_call_node == NULL) {
+        free(name);
+        return NULL;
+    }
+    func_call_node->name = name;
+
+    while (!check(TOK_RPAREN) && !check(TOK_EOF))
+    {
+        ASTNode* arg = parse_expression();
+        if(arg == NULL) {
+            printf("Parse error: expected expression in function argument\n");
+            return func_call_node;
+        }
+
+        add_child(func_call_node, arg);
+
+        if (!match(TOK_COMMA)) {
+            break;
+        }
+    }
+
+    if(!match(TOK_RPAREN)) {
+        printf("Parse error: expected ')' after function arguments\n");
+        return func_call_node;
+    }
+
+    return func_call_node;
+}
+
+int is_func_call()
+{
+    if(!check(TOK_IDENTIFIER))
+        return 0;
+
+    Token lparen_token = peek_token(1);
+    if(lparen_token.type != TOK_LPAREN) {
+        free_token(&lparen_token);
+        return 0;
+    }
+
+    free_token(&lparen_token);
+    return 1;
+}
+
 ASTNode* parse_expression() {
     if (check(TOK_ASTERISK))
         return parse_dereference_expression();
-
-    if (check(TOK_IDENTIFIER))
-        return parse_identifier_expression();
 
     if (check(TOK_AMPERSAND))
         return parse_address_of_expression();
 
     if(is_casting())
         return parse_casting();
+
+    if(is_func_call())
+        return parse_function_call();
+
+    if (check(TOK_IDENTIFIER))
+        return parse_identifier_expression();
 
     return parse_primary_expression();
 }
@@ -209,10 +274,7 @@ ASTNode* parse_variable_declaration() {
     }
 
     ASTNode* node;
-    if (type.pointer_level > 0) 
-        node = new_node(AST_POINTER_DECL);
-    else
-        node = new_node(AST_VAR_DECL);
+    node = new_node(AST_VAR_DECL);
 
     node->name = strdup(current_token.text);
     node->type_info = type;
@@ -549,10 +611,10 @@ void print_ast(ASTNode* node, int level)
         case AST_BLOCK:         printf("Block\n"); break;
         case AST_RETURN:        printf("Return\n"); break;
         case AST_ASSIGN:        printf("Assign\n"); break;
-        case AST_VAR_DECL:      printf("VarDecl(type %s, name %s)\n", token_type_name(node->type_info.base_type), node->name); break;
-        case AST_POINTER_DECL:  printf("PointerDecl(type %s, name %s, level %d)\n", token_type_name(node->type_info.base_type), node->name, node->type_info.pointer_level); break;
+        case AST_VAR_DECL:      printf("VariableDecl(type %s, name %s, level %d)\n", token_type_name(node->type_info.base_type), node->name, node->type_info.pointer_level); break;
         case AST_DEREFERENCE:   printf("Dereference\n"); break;
         case AST_ADDRESS_OF:    printf("AddressOf\n"); break;
+        case AST_FUNC_CALL:     printf("Function call(name: %s)\n", node->name); break;
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->type_info.base_type));
             if (node->type_info.pointer_level > 0) {

@@ -214,7 +214,6 @@ void codegen_statement(ASTNode *node) {
     {
         case AST_RETURN:        codegen_return(node); break;
         case AST_VAR_DECL:      codegen_variable_declaration(node); break;
-        case AST_POINTER_DECL:  codegen_variable_declaration(node); break;
         case AST_ASSIGN:        codegen_assign(node); break;;
         default:                return;
     }
@@ -235,7 +234,7 @@ void codegen_return(ASTNode* node) {
 }
 
 void codegen_variable_declaration(ASTNode* node) {
-    if(node->type != AST_VAR_DECL && node->type != AST_POINTER_DECL)
+    if(node->type != AST_VAR_DECL)
         return ;
 
     LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
@@ -300,7 +299,7 @@ LLVMValueRef codegen_address_of(ASTNode* node)
 }
 
 void codegen_global_variable_declaration(ASTNode *node) {
-    if(node->type != AST_POINTER_DECL && node->type != AST_VAR_DECL)
+    if(node->type != AST_VAR_DECL)
         return;
 
     LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
@@ -437,7 +436,6 @@ void codegen_program(ASTNode* node)
         switch (node->children[i]->type) {
             case AST_FUNCTION:      codegen_function(node->children[i]); break;
             case AST_VAR_DECL:      codegen_global_variable_declaration(node->children[i]); break;
-            case AST_POINTER_DECL:  codegen_global_variable_declaration(node->children[i]); break;
             default: break;
         }
     }

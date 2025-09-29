@@ -11,11 +11,11 @@ typedef enum {
     AST_EXPRESSION,
     AST_VAR_DECL,
     AST_ASSIGN,
-    AST_POINTER_DECL,
     AST_DEREFERENCE,
     AST_ADDRESS_OF,
     AST_CAST,
     AST_PARAM_LIST,
+    AST_FUNC_CALL
 } ASTNodeType;
 
 typedef struct TypeInfo {
