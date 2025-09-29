@@ -47,6 +47,12 @@ int main() {
         "   int main() {"
         "       float fvar = 3.14f;"
         "       int ivar = (int) fvar;"
+        ""
+        "       int a = 42;"
+        "       float b = (float) a;"
+        ""
+        "       int* p = &ivar;"
+        "       int* vp = (int*) p;"
         "       return ivar;"
         "    }"
         "}";
@@ -58,6 +64,6 @@ int main() {
         return 1;
 
     print_ast(root, 0);
-    generate_llvm_ir(root, "main", "output.ll");
+    //generate_llvm_ir(root, "main", "output.ll");
     return 0;
 }

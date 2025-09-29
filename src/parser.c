@@ -157,6 +157,9 @@ ASTNode* parse_expression() {
     if (check(TOK_AMPERSAND))
         return parse_address_of_expression();
 
+    if(is_casting())
+        return parse_casting();
+
     return parse_primary_expression();
 }
 
@@ -319,6 +322,80 @@ int parse_parameters()
     return 0;
 }
 
+
+// float pi = 3.14f;
+// int v = (int) pi;
+ASTNode* parse_casting()
+{
+    if(!match(TOK_LPAREN)) {
+        printf("Parse error: exptected: '('\n");
+        return NULL;
+    }
+
+    if(!is_type(current_token.type)) {
+        printf("Parse error: expected: 'TYPE'\n");
+        return NULL;
+    }
+
+    TypeInfo cast_type = parse_type(); 
+
+    if(!match(TOK_RPAREN)) {
+        printf("Parse error: expected: ')\n");
+        return NULL;
+    }
+
+    ASTNode* expr = parse_expression();
+    if(expr == NULL) {
+        printf("Parse error: expected expression after cast\n");
+        return NULL;
+    }
+
+    ASTNode* cast_node = new_node(AST_CAST);
+    if(cast_node == NULL) {
+        printf("Memory allocation failed\n");
+        return NULL;
+    }
+
+    cast_node->type_info = cast_type;
+    add_child(cast_node, expr);
+
+
+    return cast_node;
+}
+
+int is_casting()
+{
+    if(!check(TOK_LPAREN))
+        return 0;
+
+    Token type_token = peek_token(1);
+    if(!is_type(type_token.type)) {
+        free_token(&type_token);
+        return 0;
+    }
+    free_token(&type_token);
+
+    int pointer_level = check_pointer_level(2);
+    Token rparen_token = peek_token(2 + pointer_level);
+
+    int is_cast = (rparen_token.type == TOK_RPAREN);
+    free_token(&rparen_token);
+
+    return is_cast;
+}
+
+int check_pointer_level(int offset)
+{
+    int starting_offset = offset; 
+    Token next_token = peek_token(offset);
+    while(next_token.type == TOK_ASTERISK) {
+        free_token(&next_token);
+        next_token = peek_token(++offset);
+    }
+    free_token(&next_token);
+    return offset - starting_offset;
+}
+
 TypeInfo parse_type()
 {
     if (!is_type(current_token.type)) {
@@ -440,6 +517,14 @@ void print_ast(ASTNode* node, int level)
         case AST_POINTER_DECL:  printf("PointerDecl(type %s, name %s, level %d)\n", token_type_name(node->type_info.base_type), node->name, node->type_info.pointer_level); break;
         case AST_DEREFERENCE:   printf("Dereference\n"); break;
         case AST_ADDRESS_OF:    printf("AddressOf\n"); break;
+        case AST_CAST:
+            printf("Cast(to %s", token_type_name(node->type_info.base_type));
+            if (node->type_info.pointer_level > 0) {
+                for (int i = 0; i < node->type_info.pointer_level; i++)
+                    printf("*");
+            }
+            printf(")\n");
+            break;
         case AST_EXPRESSION:
             if (node->name) {
                 printf("Identifier(%s)\n", node->name);

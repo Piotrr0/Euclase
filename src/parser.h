@@ -13,7 +13,8 @@ typedef enum {
     AST_ASSIGN,
     AST_POINTER_DECL,
     AST_DEREFERENCE,
-    AST_ADDRESS_OF
+    AST_ADDRESS_OF,
+    AST_CAST,
 } ASTNodeType;
 
 typedef struct TypeInfo {
@@ -55,7 +56,10 @@ ASTNode* parse_return();
 ASTNode* parse_statement();
 ASTNode* parse_block();
 int is_func_declaration();
+int check_pointer_level(int offset);
+int is_casting();
 int parse_parameters();
+ASTNode* parse_casting();
 TypeInfo parse_type();
 ASTNode* parse_function();
 ASTNode* parse_namespace(ASTNodeType type);
