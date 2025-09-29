@@ -313,15 +313,48 @@ int is_func_declaration()
     return is_func;
 }
 
-int parse_parameters()
-{
-    if (!match(TOK_LPAREN) || !match(TOK_RPAREN)) {
-        printf("Parse error: expected '()'\n");
-        return -1;
+ASTNode* parse_parameters() {
+    if (!match(TOK_LPAREN)) {
+        printf("Parse error: expected '('\n");
+        return NULL;
     }
-    return 0;
-}
 
+    ASTNode* param_list = new_node(AST_PARAM_LIST);
+
+    while (!check(TOK_RPAREN) && !check(TOK_EOF)) 
+    {
+        if (!is_type(current_token.type)) {
+            printf("Parse error: expected type in parameter list\n");
+            return NULL;
+        }
+
+        TypeInfo type = parse_type();
+
+        if (!check(TOK_IDENTIFIER)) {
+            printf("Parse error: expected parameter name\n");
+            return NULL;
+        }
+        char* param_name = strdup(current_token.text);
+        advance();
+
+        ASTNode* param_node = new_node(AST_VAR_DECL);
+        param_node->name = param_name;
+        param_node->type_info = type;
+
+        add_child(param_list, param_node);
+
+        if (!match(TOK_COMMA)) {
+            break;
+        }
+    }
+
+    if (!match(TOK_RPAREN)) {
+        printf("Parse error: expected ')'\n");
+        return NULL;
+    }
+
+    return param_list;
+}
 
 // float pi = 3.14f;
 // int v = (int) pi;
@@ -429,7 +462,9 @@ ASTNode* parse_function()
     func->name = strdup(current_token.text);
     advance();
 
-    parse_parameters();
+    ASTNode* params = parse_parameters();
+    if (params != NULL)
+        add_child(func, params);
 
     ASTNode* body = parse_block();
     if(body != NULL)
@@ -510,6 +545,7 @@ void print_ast(ASTNode* node, int level)
     switch (node->type) {
         case AST_PROGRAM:       printf("Program (namespace %s)\n", node->name ? node->name : "(unnamed)"); break;
         case AST_FUNCTION:      printf("Function (return type %s, name %s)\n", token_type_name(node->type_info.base_type), node->name); break;
+        case AST_PARAM_LIST:    printf("Parameter List\n"); break;
         case AST_BLOCK:         printf("Block\n"); break;
         case AST_RETURN:        printf("Return\n"); break;
         case AST_ASSIGN:        printf("Assign\n"); break;

@@ -28,6 +28,7 @@ Symbol symbols[] = {
     {'}', TOK_RBRACE},
     {'(', TOK_LPAREN},
     {')', TOK_RPAREN},
+    {',', TOK_COMMA},
     {';', TOK_SEMICOLON},
     {'=', TOK_ASSIGNMENT},
     {'*', TOK_ASTERISK},
@@ -222,6 +223,7 @@ const char* token_type_name(TokenType type) {
         case TOK_RBRACE:        return "RBRACE";
         case TOK_LPAREN:        return "LPAREN";
         case TOK_RPAREN:        return "RPAREN";
+        case TOK_COMMA:         return "COMMA";
         case TOK_SEMICOLON:     return "SEMICOLON";
         case TOK_ASSIGNMENT:    return "ASSIGNMENT";
         case TOK_ASTERISK:      return "ASTERISK";

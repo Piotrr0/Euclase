@@ -6,6 +6,7 @@ typedef enum {
     TOK_RBRACE, 
     TOK_LPAREN, 
     TOK_RPAREN,
+    TOK_COMMA,
     TOK_SEMICOLON,
     TOK_ASSIGNMENT,
     TOK_ASTERISK,

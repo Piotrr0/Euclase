@@ -15,6 +15,7 @@ typedef enum {
     AST_DEREFERENCE,
     AST_ADDRESS_OF,
     AST_CAST,
+    AST_PARAM_LIST,
 } ASTNodeType;
 
 typedef struct TypeInfo {
@@ -58,7 +59,7 @@ ASTNode* parse_block();
 int is_func_declaration();
 int check_pointer_level(int offset);
 int is_casting();
-int parse_parameters();
+ASTNode* parse_parameters();
 ASTNode* parse_casting();
 TypeInfo parse_type();
 ASTNode* parse_function();

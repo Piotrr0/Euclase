@@ -16,6 +16,16 @@ int main() {
         "       return pi;"
         "    }"
         ""
+        "    int assign(int to, int from) {"
+        "       to = from;"
+        "       return 1;                  "
+        "    }"
+        ""
+        "    int ptr_test(int* p) {"
+        "       int x = *p;"
+        "       return x;"
+        "    }"
+
         "    int sum() {"
         "       int x = 10;"
         "       int y = 20;"
@@ -57,7 +67,7 @@ int main() {
         "    }"
         "}";
 
-    init_lexer(&lexer, code_casting);
+    init_lexer(&lexer, code_variables);
 
     ASTNode* root = parse_program();
     if(root == NULL)
