@@ -214,7 +214,7 @@ void codegen_statement(ASTNode *node) {
     {
         case AST_RETURN:        codegen_return(node); break;
         case AST_VAR_DECL:      codegen_variable_declaration(node); break;
-        case AST_POINTER_DECL:  codegen_ptr_declaration(node); break;
+        case AST_POINTER_DECL:  codegen_variable_declaration(node); break;
         case AST_ASSIGN:        codegen_assign(node); break;;
         default:                return;
     }
@@ -235,24 +235,26 @@ void codegen_return(ASTNode* node) {
 }
 
 void codegen_variable_declaration(ASTNode* node) {
-    if(node->type != AST_VAR_DECL)
+    if(node->type != AST_VAR_DECL && node->type != AST_POINTER_DECL)
         return ;
 
     LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
+    for (int i = 0; i < node->type_info.pointer_level; i++) {
+        var_type = LLVMPointerType(var_type, 0);
+    }
+
     LLVMValueRef alloca = LLVMBuildAlloca(ctx.builder, var_type, node->name);
 
     if(node->child_count > 0)
     {
         LLVMValueRef init_val = codegen_expression(node->children[0]);
         if (init_val == NULL) 
-        {
             return;
-        }
 
         LLVMBuildStore(ctx.builder, init_val, alloca);
     }
 
-    add_variable(&ctx, node->name, alloca, 0, node->type_info.base_type, 0);
+    add_variable(&ctx, node->name, alloca, 0, node->type_info.base_type, node->type_info.pointer_level);
 }
 
 LLVMValueRef codegen_dereference(ASTNode* node)
@@ -297,8 +299,8 @@ LLVMValueRef codegen_address_of(ASTNode* node)
     return NULL;
 }
 
-void codegen_ptr_declaration(ASTNode *node) {
-    if(node->type != AST_POINTER_DECL)
+void codegen_global_variable_declaration(ASTNode *node) {
+    if(node->type != AST_POINTER_DECL && node->type != AST_VAR_DECL)
         return;
 
     LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
@@ -306,23 +308,6 @@ void codegen_ptr_declaration(ASTNode *node) {
         var_type = LLVMPointerType(var_type, 0);
     }
 
-    LLVMValueRef alloca = LLVMBuildAlloca(ctx.builder, var_type, node->name);
-    if(node->child_count > 0) {
-        LLVMValueRef init_val = codegen_expression(node->children[0]);
-        if(init_val)
-            LLVMBuildStore(ctx.builder, init_val, alloca);
-    }
-
-    add_variable(&ctx, node->name, alloca, 0, node->type_info.base_type, node->type_info.pointer_level);
-}
-
-void codegen_global_variable_declaration(ASTNode* node) {
-    if(node->type != AST_VAR_DECL)
-    {
-        return;
-    }
-
-    LLVMTypeRef var_type = token_type_to_llvm_type(&ctx,node->type_info.base_type);
     LLVMValueRef global_var = LLVMAddGlobal(ctx.module, var_type, node->name);
 
     if(node->child_count > 0)
@@ -331,30 +316,6 @@ void codegen_global_variable_declaration(ASTNode* node) {
         if (init_val != NULL) 
         {
             LLVMSetInitializer(global_var, init_val);
-        }
-    }
-    add_variable(&ctx, node->name, global_var, 1, node->type_info.base_type, 0);
-}
-
-void codegen_global_ptr_declaration(ASTNode *node) {
-    if(node->type != AST_POINTER_DECL)
-        return;
-
-    LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
-    for (int i = 0; i < node->type_info.pointer_level; i++) {
-        var_type = LLVMPointerType(var_type, 0);
-    }
-
-    LLVMValueRef global_var = LLVMAddGlobal(ctx.module, var_type, node->name);
-
-    if(node->child_count > 0)
-    {
-        if(node->children[0]->type == AST_ADDRESS_OF)
-        {
-            ASTNode* id = node->children[0]->children[0];
-            Variable* var = get_variable(&ctx, id->name);
-            if(var != NULL)
-                LLVMSetInitializer(global_var, var->alloc);
         }
     }
     add_variable(&ctx, node->name, global_var, 1, node->type_info.base_type, node->type_info.pointer_level);
@@ -408,20 +369,41 @@ void codegen_function(ASTNode *node) {
         printf("Codegen: Expected function node\n");
         return;
     }
+
+    ASTNode* params_node = node->children[0];
+    if(params_node->type != AST_PARAM_LIST) {
+        printf("Codegen: Expected parameter list node\n");
+        return;
+    }
+
+    LLVMTypeRef param_types[params_node->child_count] = { };
+
+    for(int i = 0; i<params_node->child_count; i++)
+    {
+        ASTNode* param = params_node->children[i];
+        LLVMTypeRef type = token_type_to_llvm_type(&ctx, param->type_info.base_type);
+
+        const int pointer_level = param->type_info.pointer_level;
+        for(int j = 0; j < pointer_level; j++)
+            type = LLVMPointerType(type, 0);
+
+        param_types[i] = type; 
+    }
     
     LLVMTypeRef ret_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);    
-    LLVMTypeRef param_types[] = { };
 
-    LLVMTypeRef func_type = LLVMFunctionType(ret_type, param_types, 0, 0);
+    LLVMTypeRef func_type = LLVMFunctionType(ret_type, param_types, params_node->child_count, 0);
     LLVMValueRef function = LLVMAddFunction(ctx.module, node->name, func_type);
 
     LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(ctx.context, function, "entry");
     LLVMPositionBuilderAtEnd(ctx.builder, entry);
 
+    for(int i = 0; i < params_node->child_count; i++) {
+        codegen_variable_declaration(params_node->children[i]);
+    }
+
     if (node->child_count > 0) {
-        for (int i = 0; i < node->child_count; i++) {
-            codegen_block(node->children[i]);
-        }
+        codegen_block(node->children[1]);
     }
 
     if (LLVMVerifyFunction(function, LLVMPrintMessageAction)) {
@@ -455,7 +437,7 @@ void codegen_program(ASTNode* node)
         switch (node->children[i]->type) {
             case AST_FUNCTION:      codegen_function(node->children[i]); break;
             case AST_VAR_DECL:      codegen_global_variable_declaration(node->children[i]); break;
-            case AST_POINTER_DECL:  codegen_global_ptr_declaration(node->children[i]); break;
+            case AST_POINTER_DECL:  codegen_global_variable_declaration(node->children[i]); break;
             default: break;
         }
     }

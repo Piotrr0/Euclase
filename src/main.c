@@ -17,7 +17,13 @@ int main() {
         "    }"
         ""
         "    int assign(int to, int from) {"
-        "       return x = y ;"
+        "       to = from;"
+        "       return 1;                  "
+        "    }"
+        ""
+        "    int ptr_test(int* p) {"
+        "       int x = *p;"
+        "       return x;"
         "    }"
 
         "    int sum() {"
@@ -68,6 +74,6 @@ int main() {
         return 1;
 
     print_ast(root, 0);
-    //generate_llvm_ir(root, "main", "output.ll");
+    generate_llvm_ir(root, "main", "output.ll");
     return 0;
 }
