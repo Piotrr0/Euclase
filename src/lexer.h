@@ -81,6 +81,7 @@ extern Keyword keywords[];
 
 
 Token make_token(TokenType type, const char* text, ValueType vtype);
+Token debug_return(Token token);
 void free_token(Token* token);
 
 Token make_int_token(int value);
