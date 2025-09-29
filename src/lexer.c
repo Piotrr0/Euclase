@@ -161,6 +161,15 @@ Token lex_keyword() {
     return lex_keyword_from_pos(&lexer.position);
 }
 
+Token debug_return(Token token) {
+    printf("lexer: current token: %s", token_type_name(token.type));
+    if (token.text != NULL) {
+        printf("  (lexeme: %s)", token.text);
+    }
+    printf("\n");
+    return token;
+}
+
 Token get_token_from_pos(int* pos) {
     skip_whitespaces_from_pos(pos);
     char c = peek(pos);
@@ -181,7 +190,7 @@ Token get_token_from_pos(int* pos) {
 }
 
 Token get_token() {
-    return get_token_from_pos(&lexer.position);
+    return debug_return(get_token_from_pos(&lexer.position));
 }
 
 Token peek_token(int steps) {

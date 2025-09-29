@@ -42,7 +42,16 @@ int main() {
         "    }"
         "}";
 
-    init_lexer(&lexer, code_pointers);
+    const char* code_casting = 
+        "namespace main {"
+        "   int main() {"
+        "       float fvar = 3.14f;"
+        "       int ivar = (int) fvar;"
+        "       return ivar;"
+        "    }"
+        "}";
+
+    init_lexer(&lexer, code_casting);
 
     ASTNode* root = parse_program();
     if(root == NULL)
