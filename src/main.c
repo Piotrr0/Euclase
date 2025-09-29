@@ -16,6 +16,10 @@ int main() {
         "       return pi;"
         "    }"
         ""
+        "    int assign(int to, int from) {"
+        "       return x = y ;"
+        "    }"
+
         "    int sum() {"
         "       int x = 10;"
         "       int y = 20;"
@@ -57,13 +61,13 @@ int main() {
         "    }"
         "}";
 
-    init_lexer(&lexer, code_casting);
+    init_lexer(&lexer, code_variables);
 
     ASTNode* root = parse_program();
     if(root == NULL)
         return 1;
 
     print_ast(root, 0);
-    generate_llvm_ir(root, "main", "output.ll");
+    //generate_llvm_ir(root, "main", "output.ll");
     return 0;
 }
