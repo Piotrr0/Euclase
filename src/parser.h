@@ -11,11 +11,11 @@ typedef enum {
     AST_EXPRESSION,
     AST_VAR_DECL,
     AST_ASSIGN,
-    AST_POINTER_DECL,
     AST_DEREFERENCE,
     AST_ADDRESS_OF,
     AST_CAST,
     AST_PARAM_LIST,
+    AST_FUNC_CALL
 } ASTNodeType;
 
 typedef struct TypeInfo {
@@ -37,6 +37,8 @@ typedef struct ASTNode {
 
 ASTNode* new_node(ASTNodeType type);
 void add_child(ASTNode* parent, ASTNode* child);
+void free_ast(ASTNode* node);
+
 void advance();
 int match(TokenType type);
 int is_type(TokenType t);

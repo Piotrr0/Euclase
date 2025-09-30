@@ -16,20 +16,9 @@ int main() {
         "       return pi;"
         "    }"
         ""
-        "    int assign(int to, int from) {"
-        "       to = from;"
-        "       return 1;                  "
-        "    }"
-        ""
         "    int ptr_test(int* p) {"
         "       int x = *p;"
         "       return x;"
-        "    }"
-
-        "    int sum() {"
-        "       int x = 10;"
-        "       int y = 20;"
-        "       return 30;"
         "    }"
         ""
         "    int main() {"
@@ -67,7 +56,22 @@ int main() {
         "    }"
         "}";
 
-    init_lexer(&lexer, code_variables);
+    const char* code_function_call = 
+        "namespace main {"
+        "    int a = 1;"
+        "    int sum(int* c, int b) {"
+        "       int x = *c;"
+        "       return x;"
+        "    }"
+        ""
+        "    int main() {"
+        "       a = 42;"
+        "       int b = sum(&a, 5);"
+        "       return b;"
+        "    }"
+        "}";
+
+    init_lexer(&lexer, code_function_call);
 
     ASTNode* root = parse_program();
     if(root == NULL)
@@ -75,5 +79,6 @@ int main() {
 
     print_ast(root, 0);
     generate_llvm_ir(root, "main", "output.ll");
+    free_ast(root);
     return 0;
 }
