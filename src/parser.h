@@ -8,6 +8,7 @@ typedef enum {
     AST_FUNCTION,
     AST_BLOCK,
     AST_RETURN,
+    AST_IDENTIFIER,
     AST_EXPRESSION,
     AST_VAR_DECL,
     AST_ASSIGN,

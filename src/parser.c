@@ -22,6 +22,9 @@ ASTNode* new_node(ASTNodeType type) {
 }
 
 void add_child(ASTNode* parent, ASTNode* child) {
+    if(parent == NULL)
+        return;
+
     if(child == NULL)
         return;
 
@@ -144,7 +147,7 @@ ASTNode* parse_primary_expression() {
 
 ASTNode* parse_identifier_expression()
 {
-    ASTNode* node = new_node(AST_EXPRESSION);
+    ASTNode* node = new_node(AST_IDENTIFIER);
     if (check(TOK_IDENTIFIER)) {
         node->name = strdup(current_token.text);
         advance();
@@ -273,7 +276,7 @@ ASTNode* parse_assignment() {
         return NULL;
     }
 
-    if (lhs->type != AST_EXPRESSION && lhs->type != AST_DEREFERENCE) {
+    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_DEREFERENCE) {
         printf("Parse error: invalid lvalue\n");
         free_ast(lhs);
         return NULL;
@@ -320,15 +323,17 @@ ASTNode* parse_variable_declaration() {
     node->type_info = type;
     advance();
 
-    if (match(TOK_ASSIGNMENT)) {
-        ASTNode* expr = parse_expression();
-        if(expr == NULL)
-        {
-            free_ast(node);
-        }
-        add_child(node, expr);
-        node->value.type = expr->value.type;
+    if (!match(TOK_ASSIGNMENT)) {
+        printf("Parse error: expecter initialization");
+        return NULL;        
     }
+
+    ASTNode* expr = parse_expression();
+    if(expr == NULL)
+        free_ast(node);
+    
+    add_child(node, expr);
+    node->value.type = expr->value.type;
 
     if (!match(TOK_SEMICOLON)) {
         printf("Parse error: expected ';'\n");
@@ -683,6 +688,7 @@ void print_ast(ASTNode* node, int level)
         case AST_DEREFERENCE:   printf("Dereference\n"); break;
         case AST_ADDRESS_OF:    printf("AddressOf\n"); break;
         case AST_FUNC_CALL:     printf("Function call(name: %s)\n", node->name); break;
+        case AST_IDENTIFIER:    printf("Identifier(%s)\n", node->name); break;
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->type_info.base_type));
             if (node->type_info.pointer_level > 0) {
@@ -692,16 +698,11 @@ void print_ast(ASTNode* node, int level)
             printf(")\n");
             break;
         case AST_EXPRESSION:
-            if (node->name) {
-                printf("Identifier(%s)\n", node->name);
-            } 
-            else {
-                switch (node->value.type) {
-                    case VAL_INT:       printf("Number(int: %d)\n", node->value.int_val); break;
-                    case VAL_FLOAT:     printf("Number(float: %f)\n", node->value.float_val); break;
-                    case VAL_DOUBLE:    printf("Number(double: %lf)\n", node->value.double_val); break;
-                    case VAL_NONE:      printf("Expression()\n");   break;
-                }
+            switch (node->value.type) {
+                case VAL_INT:       printf("Number(int: %d)\n", node->value.int_val); break;
+                case VAL_FLOAT:     printf("Number(float: %f)\n", node->value.float_val); break;
+                case VAL_DOUBLE:    printf("Number(double: %lf)\n", node->value.double_val); break;
+                case VAL_NONE:      printf("Expression()\n");   break;
             }
             break;
         default:                printf("UnknownNodeType(%d)\n", node->type); break;

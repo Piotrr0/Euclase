@@ -228,9 +228,10 @@ LLVMValueRef codegen_expression(ASTNode *node) {
         case AST_CAST:
             return codegen_cast(node);
 
+        case AST_IDENTIFIER:
+            return codegen_variable_load(node->name);
+
         case AST_EXPRESSION:
-            if (node->name)
-                return codegen_variable_load(node->name);
             return codegen_constant(node);
 
         default:
@@ -296,7 +297,7 @@ LLVMValueRef codegen_dereference(ASTNode* node)
 
     ASTNode* ptr_expr = node->children[0];
     
-    if (ptr_expr->type == AST_EXPRESSION && ptr_expr->name) {
+    if (ptr_expr->type == AST_IDENTIFIER) {
         Variable* var = get_variable(&ctx, ptr_expr->name);
         if (!var || !var->alloc) 
             return NULL;
@@ -372,7 +373,7 @@ void codegen_assign(ASTNode* node)
         LLVMValueRef new_val = codegen_expression(rhs);
         if(!new_val) return;
 
-        if(lhs->type == AST_EXPRESSION && lhs->name) 
+        if(lhs->type == AST_IDENTIFIER) 
         {
             Variable* v = get_variable(&ctx, lhs->name);
             if(v) 
