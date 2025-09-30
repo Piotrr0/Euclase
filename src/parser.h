@@ -37,6 +37,8 @@ typedef struct ASTNode {
 
 ASTNode* new_node(ASTNodeType type);
 void add_child(ASTNode* parent, ASTNode* child);
+void free_ast(ASTNode* node);
+
 void advance();
 int match(TokenType type);
 int is_type(TokenType t);

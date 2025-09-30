@@ -29,6 +29,29 @@ void add_child(ASTNode* parent, ASTNode* child) {
     parent->children[parent->child_count++] = child;
 }
 
+void free_ast(ASTNode* node)
+{
+    if(node == NULL)
+        return;
+
+    if(node->name != NULL) {
+        free(node->name);
+        node->name = NULL;        
+    }
+
+    for (int i = 0; i < node->child_count; i++) {
+        free_ast(node->children[i]);
+    }
+
+    if (node->children != NULL) 
+    {
+        free(node->children);
+        node->children = NULL;
+    }
+
+    free(node);
+}
+
 void advance() {
     if (current_token.type != TOK_EOF)
         current_token = get_token();
@@ -70,10 +93,15 @@ ASTNode* parse_dereference()
         return NULL;
 
     ASTNode* node = new_node(AST_DEREFERENCE);
-    ASTNode* dereference_exp = parse_expression();
-
-    if(dereference_exp == NULL)
+    if(node == NULL)
         return NULL;
+
+    ASTNode* dereference_exp = parse_expression();
+    if(dereference_exp == NULL)
+    {
+        free_ast(node);
+        return NULL;
+    }
 
     add_child(node, dereference_exp);
     return node;
@@ -85,10 +113,15 @@ ASTNode* parse_address_of()
         return NULL;
 
     ASTNode* node = new_node(AST_ADDRESS_OF);
-    ASTNode* address_of_exp = parse_expression();
-
-    if(address_of_exp == NULL)
+    if(node == NULL)
         return NULL;
+
+    ASTNode* address_of_exp = parse_expression();
+    if(address_of_exp == NULL)
+    {
+        free_ast(node);
+        return NULL;
+    }
 
     add_child(node, address_of_exp);
     return node;
@@ -102,6 +135,7 @@ ASTNode* parse_primary_expression() {
         advance();
     } else {
         printf("Parse error: expected primary expression\n");
+        free_ast(node);
         return NULL;
     }
 
@@ -128,6 +162,9 @@ ASTNode* parse_dereference_expression() {
     }
 
     ASTNode* node = new_node(AST_DEREFERENCE);
+    if(node == NULL)
+        return NULL;
+
     add_child(node, expr);
     return node;
 }
@@ -138,8 +175,8 @@ ASTNode* parse_address_of_expression() {
 
     ASTNode* node = new_node(AST_ADDRESS_OF);
     ASTNode* expr = parse_expression();
-    if (!expr) {
-        free(node);
+    if (expr == NULL) {
+        free_ast(node);
         return NULL;
     }
 
@@ -238,6 +275,7 @@ ASTNode* parse_assignment() {
 
     if (lhs->type != AST_EXPRESSION && lhs->type != AST_DEREFERENCE) {
         printf("Parse error: invalid lvalue\n");
+        free_ast(lhs);
         return NULL;
     }
 
@@ -254,6 +292,7 @@ ASTNode* parse_assignment() {
 
     if (!match(TOK_SEMICOLON)) {
         printf("Parse error: expected ';'\n");
+        free_ast(rhs);
         return NULL;
     }
 
@@ -273,8 +312,9 @@ ASTNode* parse_variable_declaration() {
         return NULL;
     }
 
-    ASTNode* node;
-    node = new_node(AST_VAR_DECL);
+    ASTNode* node = new_node(AST_VAR_DECL);
+    if(node == NULL)
+        return NULL;
 
     node->name = strdup(current_token.text);
     node->type_info = type;
@@ -282,11 +322,12 @@ ASTNode* parse_variable_declaration() {
 
     if (match(TOK_ASSIGNMENT)) {
         ASTNode* expr = parse_expression();
-        if(expr != NULL)
+        if(expr == NULL)
         {
-            add_child(node, expr);
-            node->value.type = expr->value.type;
+            free_ast(node);
         }
+        add_child(node, expr);
+        node->value.type = expr->value.type;
     }
 
     if (!match(TOK_SEMICOLON)) {
@@ -304,11 +345,16 @@ ASTNode* parse_return() {
     }
 
     ASTNode* ret_node = new_node(AST_RETURN);
+    if(ret_node == NULL)
+        return ret_node;
 
     if (!check(TOK_SEMICOLON)) {
         ASTNode* expr = parse_expression();
-        if(expr != NULL)
-            add_child(ret_node, expr);
+        if(expr == NULL) {
+            free_ast(ret_node);
+            return NULL;
+        }
+        add_child(ret_node, expr);
     }
 
     if (!match(TOK_SEMICOLON)) {
@@ -342,10 +388,14 @@ ASTNode* parse_block()
     }
 
     ASTNode* block = new_node(AST_BLOCK);
+    if(block == NULL)
+        return NULL;
+
     while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
         ASTNode* stmt = parse_statement();
-        if(stmt != NULL)
-            add_child(block, stmt);
+        if(stmt == NULL)
+            continue;
+        add_child(block, stmt);
     }
 
     if (!match(TOK_RBRACE)) {
@@ -382,11 +432,14 @@ ASTNode* parse_parameters() {
     }
 
     ASTNode* param_list = new_node(AST_PARAM_LIST);
+    if(param_list == NULL)
+        return NULL;
 
     while (!check(TOK_RPAREN) && !check(TOK_EOF)) 
     {
         if (!is_type(current_token.type)) {
             printf("Parse error: expected type in parameter list\n");
+            free_ast(param_list);
             return NULL;
         }
 
@@ -394,12 +447,18 @@ ASTNode* parse_parameters() {
 
         if (!check(TOK_IDENTIFIER)) {
             printf("Parse error: expected parameter name\n");
+            free_ast(param_list);
             return NULL;
         }
         char* param_name = strdup(current_token.text);
         advance();
 
         ASTNode* param_node = new_node(AST_VAR_DECL);
+        if(param_node == NULL)
+        {
+            free_ast(param_list);
+        }
+
         param_node->name = param_name;
         param_node->type_info = type;
 
@@ -412,6 +471,7 @@ ASTNode* parse_parameters() {
 
     if (!match(TOK_RPAREN)) {
         printf("Parse error: expected ')'\n");
+        free_ast(param_list);
         return NULL;
     }
 
@@ -447,6 +507,7 @@ ASTNode* parse_casting()
 
     ASTNode* cast_node = new_node(AST_CAST);
     if(cast_node == NULL) {
+        free_ast(expr);
         printf("Memory allocation failed\n");
         return NULL;
     }
@@ -525,13 +586,20 @@ ASTNode* parse_function()
     advance();
 
     ASTNode* params = parse_parameters();
-    if (params != NULL)
-        add_child(func, params);
+    if (params == NULL) {
+        free_ast(func);
+        return NULL;
+    }
+
+    add_child(func, params);
 
     ASTNode* body = parse_block();
-    if(body != NULL)
-        add_child(func, body);
+    if(body == NULL) {
+        free_ast(func);
+        return NULL;
+    }
 
+    add_child(func, body);
     return func;
 }
 
@@ -544,8 +612,8 @@ ASTNode* parse_namespace(ASTNodeType type)
     }
 
     char* namespace_name = strdup(current_token.text);
-
     if (!match(TOK_IDENTIFIER)) {
+        free(namespace_name);
         printf("Parse error: expected namespace name\n");
         return NULL;
     }
