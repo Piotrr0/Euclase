@@ -102,7 +102,7 @@ LLVMValueRef codegen_function_call(ASTNode* node)
     if(func_type == NULL)
         return NULL;
 
-    return LLVMBuildCall2(ctx.builder, func_type, func, args, args_count, "func_call"); // crash is here
+    return LLVMBuildCall2(ctx.builder, func_type, func, args, args_count, "func_call");
 }
 
 LLVMValueRef codegen_variable_load(const char* name) {
