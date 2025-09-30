@@ -59,27 +59,26 @@ int main() {
     const char* code_function_call = 
         "namespace main {"
         "    int a = 1;"
-        "    int sum(int* a, int b) {"
-        "       int x = *p;"
+        "    int sum(int* c, int b) {"
+        "       int x = *c;"
         "       return x;"
         "    }"
         ""
         "    int main() {"
         "       a = 42;"
-        "       int b = sum(5, &a);"
-        "       a = sum(5, 10);"
+        "       int b = sum(&a, 5);"
         "       return b;"
         "    }"
         "}";
 
-    init_lexer(&lexer, code_pointers);
+    init_lexer(&lexer, code_function_call);
 
     ASTNode* root = parse_program();
     if(root == NULL)
         return 1;
 
     print_ast(root, 0);
-    //generate_llvm_ir(root, "main", "output.ll");
+    generate_llvm_ir(root, "main", "output.ll");
     free_ast(root);
     return 0;
 }

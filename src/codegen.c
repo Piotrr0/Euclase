@@ -68,7 +68,7 @@ int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc, int 
 
 Variable* get_variable(CodegenContext* ctx, const char* name)
 {
-    for(int i = 0; i<ctx->var_count; i++)
+    for(int i = ctx->var_count - 1; i >= 0; i--)
     {
         if (strcmp(ctx->variables[i].name, name) == 0) {
             return &ctx->variables[i];
@@ -77,6 +77,33 @@ Variable* get_variable(CodegenContext* ctx, const char* name)
     return NULL;
 }
 
+LLVMValueRef codegen_function_call(ASTNode* node)
+{
+    if(node->type != AST_FUNC_CALL)
+        return NULL;
+
+    const int args_count = node->child_count;
+    LLVMValueRef args[args_count];
+
+    for(int i = 0; i<node->child_count; i++) 
+    {
+        args[i] = codegen_expression(node->children[i]);
+        if (args[i] == NULL) {
+            printf("Codegen: Failed to generate argument %d for function call\n", i);
+            return NULL;
+        }
+    }
+
+    LLVMValueRef func = LLVMGetNamedFunction(ctx.module, node->name);
+    if(func == NULL)
+        return NULL;
+
+    LLVMTypeRef func_type = LLVMGlobalGetValueType(func);
+    if(func_type == NULL)
+        return NULL;
+
+    return LLVMBuildCall2(ctx.builder, func_type, func, args, args_count, "func_call"); // crash is here
+}
 
 LLVMValueRef codegen_variable_load(const char* name) {
     if (name == NULL)
@@ -194,6 +221,9 @@ LLVMValueRef codegen_expression(ASTNode *node) {
 
         case AST_DEREFERENCE:
             return codegen_dereference(node);
+        
+        case AST_FUNC_CALL:
+            return codegen_function_call(node);
 
         case AST_CAST:
             return codegen_cast(node);
@@ -271,6 +301,11 @@ LLVMValueRef codegen_dereference(ASTNode* node)
         if (!var || !var->alloc) 
             return NULL;
 
+        if (var->pointer_level <= 0) {
+           printf("Codegen: Cannot dereference non-pointer variable '%s'\n", ptr_expr->name);
+            return NULL;
+        }
+
         LLVMValueRef ptr_val;
         if (var->is_global) 
             ptr_val = LLVMBuildLoad2(ctx.builder, LLVMGlobalGetValueType(var->alloc), var->alloc, "ptr_load");
@@ -278,6 +313,10 @@ LLVMValueRef codegen_dereference(ASTNode* node)
             ptr_val = LLVMBuildLoad2(ctx.builder, LLVMGetAllocatedType(var->alloc), var->alloc, "ptr_load");
         
         LLVMTypeRef pointed_type = token_type_to_llvm_type(&ctx, var->base_type);
+        for (int j = 0; j < var->pointer_level - 1; j++) {
+            pointed_type = LLVMPointerType(pointed_type, 0);
+        }
+        
         return LLVMBuildLoad2(ctx.builder, pointed_type, ptr_val, "def");
     }
     return NULL;
@@ -399,6 +438,12 @@ void codegen_function(ASTNode *node) {
 
     for(int i = 0; i < params_node->child_count; i++) {
         codegen_variable_declaration(params_node->children[i]);
+    
+        LLVMValueRef param_val = LLVMGetParam(function, i);
+        Variable* var = get_variable(&ctx, params_node->children[i]->name);
+        if (var && var->alloc) {
+            LLVMBuildStore(ctx.builder, param_val, var->alloc);
+        }
     }
 
     if (node->child_count > 0) {

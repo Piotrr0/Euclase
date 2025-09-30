@@ -45,6 +45,7 @@ Variable* get_variable(CodegenContext* ctx, const char* name);
 LLVMValueRef codegen_constant(ASTNode* node);
 LLVMValueRef codegen_variable_load(const char* name);
 LLVMValueRef codegen_cast(ASTNode* node);
+LLVMValueRef codegen_function_call(ASTNode* node);
 
 int are_types_compatible(LLVMTypeRef form_type, LLVMTypeRef to_type);
 LLVMValueRef generate_cast_instruction(LLVMValueRef value, LLVMTypeRef from_type, LLVMTypeRef to_type, const char* name);
