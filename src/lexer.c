@@ -31,9 +31,15 @@ Symbol symbols[] = {
     {',', TOK_COMMA},
     {';', TOK_SEMICOLON},
     {'=', TOK_ASSIGNMENT},
-    {'*', TOK_ASTERISK},
     {'&', TOK_AMPERSAND},
-    {'\0',TOK_EOF}
+
+    {'+', TOK_ADDITION},
+    {'-', TOK_SUBTRACTION},
+    {'*', TOK_MULTIPLICATION},
+    {'/', TOK_DIVISION},
+    {'%', TOK_MODULUS},
+
+    {'\0',TOK_EOF},
 };
 
 Token make_token(TokenType type, const char* text, ValueType vtype) {
@@ -226,8 +232,13 @@ const char* token_type_name(TokenType type) {
         case TOK_COMMA:         return "COMMA";
         case TOK_SEMICOLON:     return "SEMICOLON";
         case TOK_ASSIGNMENT:    return "ASSIGNMENT";
-        case TOK_ASTERISK:      return "ASTERISK";
         case TOK_AMPERSAND:     return "AMPERSAND";
+
+        case TOK_ADDITION:      return "ADDITION";
+        case TOK_SUBTRACTION:   return "SUBTRACTION";
+        case TOK_MULTIPLICATION:return "MULTIPLICATION";
+        case TOK_DIVISION:      return "DIVISION";
+        case TOK_MODULUS:       return "MODULUS";
 
         case TOK_VOID:          return "VOID";
         case TOK_INT:           return "INT";

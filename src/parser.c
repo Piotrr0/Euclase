@@ -83,7 +83,7 @@ int is_type(TokenType t) {
 
 int parse_pointer_level() {
     int level = 0;
-    while (match(TOK_ASTERISK)) {
+    while (match(TOK_MULTIPLICATION)) {
         level++;
     }
     return level;
@@ -92,7 +92,7 @@ int parse_pointer_level() {
 
 ASTNode* parse_dereference()
 {
-    if(!match(TOK_ASTERISK))
+    if(!match(TOK_MULTIPLICATION))
         return NULL;
 
     ASTNode* node = new_node(AST_DEREFERENCE);
@@ -156,7 +156,7 @@ ASTNode* parse_identifier_expression()
 }
 
 ASTNode* parse_dereference_expression() {
-    if (!match(TOK_ASTERISK))
+    if (!match(TOK_MULTIPLICATION))
         return NULL;
 
     ASTNode* expr = parse_expression();
@@ -250,7 +250,7 @@ int is_func_call()
 }
 
 ASTNode* parse_expression() {
-    if (check(TOK_ASTERISK))
+    if (check(TOK_MULTIPLICATION))
         return parse_dereference_expression();
 
     if (check(TOK_AMPERSAND))
@@ -374,7 +374,7 @@ ASTNode* parse_statement() {
     if (check(TOK_RETURN))
         return parse_return();
 
-    if (check(TOK_IDENTIFIER) || check(TOK_ASTERISK))
+    if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION))
         return parse_assignment();
 
     if (is_type(current_token.type))
@@ -549,7 +549,7 @@ int check_pointer_level(int offset)
 {
     int starting_offset = offset; 
     Token next_token = peek_token(offset);
-    while(next_token.type == TOK_ASTERISK) {
+    while(next_token.type == TOK_MULTIPLICATION) {
         free_token(&next_token);
         next_token = peek_token(++offset);
     }
