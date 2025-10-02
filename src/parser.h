@@ -16,7 +16,12 @@ typedef enum {
     AST_ADDRESS_OF,
     AST_CAST,
     AST_PARAM_LIST,
-    AST_FUNC_CALL
+    AST_FUNC_CALL,
+    AST_ADDITION,
+    AST_SUBTRACTION,
+    AST_MULTIPLICATION,
+    AST_DIVISION,
+    AST_MODULO
 } ASTNodeType;
 
 typedef struct TypeInfo {
@@ -46,29 +51,33 @@ int is_type(TokenType t);
 int parse_pointer_level();
 
 
-TypeInfo parse_type();
-ASTNode* parse_dereference();
 ASTNode* parse_expression();
-ASTNode* parse_address_of();
+ASTNode* parse_additive();
+ASTNode* parse_multiplicative();
+ASTNode* parse_unary();
+ASTNode* parse_postfix();
+ASTNode* parse_primary();
 ASTNode* parse_primary_expression();
-ASTNode* parse_dereference_expression();
-ASTNode* parse_address_of_expression();
 ASTNode* parse_identifier_expression();
+ASTNode* parse_dereference();
+ASTNode* parse_address_of();
+ASTNode* parse_function_call();
+ASTNode* parse_casting();
+TypeInfo parse_type();
 ASTNode* parse_assignment();
 ASTNode* parse_variable_declaration();
 ASTNode* parse_return();
 ASTNode* parse_statement();
 ASTNode* parse_block();
-int is_func_declaration();
 int check_pointer_level(int offset);
-int is_casting();
 ASTNode* parse_parameters();
-ASTNode* parse_casting();
-TypeInfo parse_type();
 ASTNode* parse_function();
 ASTNode* parse_namespace(ASTNodeType type);
 ASTNode* parse_program();
-void print_ast(ASTNode* node, int indent);
 
+int is_func_call();
+int is_casting();
+int is_func_declaration();
+void print_ast(ASTNode* node, int indent);
 
 #endif

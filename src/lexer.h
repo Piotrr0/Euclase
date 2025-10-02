@@ -9,7 +9,6 @@ typedef enum {
     TOK_COMMA,
     TOK_SEMICOLON,
     TOK_ASSIGNMENT,
-    TOK_ASTERISK,
     TOK_AMPERSAND,
 
     TOK_VOID,
@@ -21,6 +20,12 @@ typedef enum {
     TOK_UDOUBLE,
     TOK_CHAR,
     TOK_UCHAR,
+
+    TOK_ADDITION,
+    TOK_SUBTRACTION,
+    TOK_MULTIPLICATION,
+    TOK_DIVISION,
+    TOK_MODULO,
 
     TOK_IDENTIFIER,
     TOK_NUMBER_INT,

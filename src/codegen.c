@@ -105,6 +105,85 @@ LLVMValueRef codegen_function_call(ASTNode* node)
     return LLVMBuildCall2(ctx.builder, func_type, func, args, args_count, "func_call");
 }
 
+int does_type_kind_match(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind* out_kind)
+{
+
+    if(left == NULL || right == NULL)
+        return 0;
+
+    LLVMTypeRef left_type = LLVMTypeOf(left);
+    LLVMTypeKind left_kind = LLVMGetTypeKind(left_type);
+
+    LLVMTypeRef right_type = LLVMTypeOf(right);
+    LLVMTypeKind right_kind = LLVMGetTypeKind(right_type);
+
+    if(left_kind == right_kind) {
+        *out_kind = left_kind;
+        return 1;
+    }
+
+    return 0;
+}
+
+LLVMValueRef codegen_arithmetic_op(ASTNode* node) {
+    LLVMValueRef left = codegen_expression(node->children[0]);
+    LLVMValueRef right = codegen_expression(node->children[1]);
+
+    if(left == NULL || right == NULL)
+        return NULL;
+
+    LLVMTypeKind type;
+    if(!does_type_kind_match(left, right, &type))
+        return  NULL;
+
+    switch (node->type) {
+        case AST_ADDITION:          return codegen_addition(left, right, type);
+        case AST_SUBTRACTION:       return codegen_subtraction(left, right, type);
+        case AST_MULTIPLICATION:    return codegen_multiplication(left, right, type);
+        case AST_DIVISION:          return codegen_division(left, right, type);
+        case AST_MODULO:            return codegen_modulo(left, right, type);
+        default: return NULL;
+    }
+}
+
+LLVMValueRef codegen_addition(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type)
+{
+    if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        return LLVMBuildFAdd(ctx.builder, left, right, "fadd");
+    else
+        return LLVMBuildAdd(ctx.builder, left, right, "add");
+}
+
+LLVMValueRef codegen_subtraction(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type)
+{
+    if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        return LLVMBuildFSub(ctx.builder, left, right, "fsub");
+    else
+        return LLVMBuildSub(ctx.builder, left, right, "sub");
+}
+
+LLVMValueRef codegen_multiplication(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type)
+{
+    if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        return LLVMBuildFMul(ctx.builder, left, right, "fmul");
+    else
+        return LLVMBuildMul(ctx.builder, left, right, "mul");
+}
+
+LLVMValueRef codegen_division(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type) {
+    if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        return LLVMBuildFDiv(ctx.builder, left, right, "fdiv");
+    else
+        return LLVMBuildSDiv(ctx.builder, left, right, "sdiv");
+}
+
+LLVMValueRef codegen_modulo(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type) {
+    if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        return LLVMBuildFRem(ctx.builder, left, right, "frem");
+    else
+        return LLVMBuildSRem(ctx.builder, left, right, "srem");
+}
+
 LLVMValueRef codegen_variable_load(const char* name) {
     if (name == NULL)
         return NULL; 
@@ -216,23 +295,17 @@ LLVMValueRef codegen_expression(ASTNode *node) {
     if (!node) return NULL;
 
     switch (node->type) {
-        case AST_ADDRESS_OF:
-            return codegen_address_of(node);
-
-        case AST_DEREFERENCE:
-            return codegen_dereference(node);
-        
-        case AST_FUNC_CALL:
-            return codegen_function_call(node);
-
-        case AST_CAST:
-            return codegen_cast(node);
-
-        case AST_IDENTIFIER:
-            return codegen_variable_load(node->name);
-
-        case AST_EXPRESSION:
-            return codegen_constant(node);
+        case AST_ADDRESS_OF:    return codegen_address_of(node);
+        case AST_DEREFERENCE:   return codegen_dereference(node);
+        case AST_FUNC_CALL:     return codegen_function_call(node);
+        case AST_CAST:          return codegen_cast(node);
+        case AST_IDENTIFIER:    return codegen_variable_load(node->name);
+        case AST_EXPRESSION:    return codegen_constant(node);
+        case AST_ADDITION:      
+        case AST_SUBTRACTION:
+        case AST_MULTIPLICATION:
+        case AST_DIVISION:
+        case AST_MODULO:        return codegen_arithmetic_op(node); 
 
         default:
             printf("Unhandled expression type: %d\n", node->type);

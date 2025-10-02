@@ -8,7 +8,7 @@ const char* test_variables =
     "namespace main {"
     "    int a = 1;"
     "    float b = 2.5f;"
-    "    double c = 0d;"
+    "    double c = 0.0d;"
     ""
     "    int main() {"
     "        a = 10;"
@@ -74,8 +74,30 @@ const char* test_nested_functions =
     "    }"
     "}";
 
-int expected[] = {10, 15, 10, 3, 5, 4};
-const int tests_count = sizeof(expected) / sizeof(expected[0]);
+const char* test_arithmetic = 
+    "namespace main {"
+    "   int add(int x, int y) {"
+    "       return x + y + 5;"
+    "   }"
+    ""
+    "   int main() {"
+    "       int sum = add(3,10);"
+    "       return sum;"
+    "   }"
+    "}";
+
+
+TestCase tests[TESTS_BUFFER];
+
+void init_tests() {
+    tests[0] = (TestCase){"variables", test_variables, 10};
+    tests[1] = (TestCase){"pointers", test_pointers, 15};
+    tests[2] = (TestCase){"pointer_function_param", test_pointer_function_param, 10};
+    tests[3] = (TestCase){"casting", test_casting, 3};
+    tests[4] = (TestCase){"casting_pointer", test_casting_pointer, 5};
+    tests[5] = (TestCase){"nested_functions", test_nested_functions, 4};
+    tests[6] = (TestCase){"arithmetic", test_arithmetic, 18};
+}
 
 int run_test(const char* test) 
 {
@@ -103,29 +125,24 @@ int run_llvm_and_get_exit_code(const char* filename) {
 }
 
 void run_tests() {
-    
-    const char* tests[6] = {
-        test_variables,
-        test_pointers,
-        test_pointer_function_param,
-        test_casting,
-        test_casting_pointer,
-        test_nested_functions
-    };
+    init_tests();
 
-    int results[6] = {};
+    int results[TESTS_BUFFER];
+    for(int i = 0; i < TESTS_BUFFER; i++) {
+        if(tests[i].name == NULL)
+            continue;
 
-    for(int i = 0; i<tests_count; i++)
-    {
-        results[i] = run_test(tests[i]);
+        results[i] = run_test(tests[i].source);
     }
 
-    for(int i = 0; i<tests_count; i++)
-    {
+    for(int i = 0; i < TESTS_BUFFER; i++) {
+        if(tests[i].name == NULL)
+            continue;
+
         int result = results[i];
-        if(result == expected[i])
-            printf("Test: %d, Passed with result: %d\n", i, result);
+        if(result == tests[i].expected)
+            printf("Test: %d (%s), Passed with result: %d\n", i, tests[i].name, result);
         else
-            printf("Test: %d, Failed with result: %d\n", i, result);
+            printf("Test: %d (%s), Failed with result: %d (expected %d)\n", i, tests[i].name, result, tests[i].expected);
     }
 }
