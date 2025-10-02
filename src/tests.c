@@ -77,7 +77,7 @@ const char* test_nested_functions =
 const char* test_arithmetic = 
     "namespace main {"
     "   int add(int x, int y) {"
-    "       return x + y;"
+    "       return x + y + 5;"
     "   }"
     ""
     "   int main() {"
@@ -96,7 +96,7 @@ void init_tests() {
     tests[3] = (TestCase){"casting", test_casting, 3};
     tests[4] = (TestCase){"casting_pointer", test_casting_pointer, 5};
     tests[5] = (TestCase){"nested_functions", test_nested_functions, 4};
-    tests[6] = (TestCase){"arithmetic", test_arithmetic, 13};
+    tests[6] = (TestCase){"arithmetic", test_arithmetic, 18};
 }
 
 int run_test(const char* test) 

@@ -47,6 +47,14 @@ LLVMValueRef codegen_variable_load(const char* name);
 LLVMValueRef codegen_cast(ASTNode* node);
 LLVMValueRef codegen_function_call(ASTNode* node);
 
+int does_type_kind_match(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind* out_kind);
+LLVMValueRef codegen_arithmetic_op(ASTNode* node);
+LLVMValueRef codegen_addition(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
+LLVMValueRef codegen_subtraction(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
+LLVMValueRef codegen_multiplication(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
+LLVMValueRef codegen_division(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
+LLVMValueRef codegen_modulo(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
+
 int are_types_compatible(LLVMTypeRef form_type, LLVMTypeRef to_type);
 LLVMValueRef generate_cast_instruction(LLVMValueRef value, LLVMTypeRef from_type, LLVMTypeRef to_type, const char* name);
 
