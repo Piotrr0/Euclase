@@ -17,7 +17,7 @@ extern const char* test_casting_pointer;
 extern const char* test_nested_functions;
 extern const char* test_arithmetic;
 
-extern TestCase* tests[TESTS_BUFFER];
+extern TestCase tests[TESTS_BUFFER];
 
 void init_tests();
 void run_tests();

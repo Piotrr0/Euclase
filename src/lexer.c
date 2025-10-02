@@ -37,7 +37,7 @@ Symbol symbols[] = {
     {'-', TOK_SUBTRACTION},
     {'*', TOK_MULTIPLICATION},
     {'/', TOK_DIVISION},
-    {'%', TOK_MODULUS},
+    {'%', TOK_MODULO},
 
     {'\0',TOK_EOF},
 };
@@ -238,7 +238,7 @@ const char* token_type_name(TokenType type) {
         case TOK_SUBTRACTION:   return "SUBTRACTION";
         case TOK_MULTIPLICATION:return "MULTIPLICATION";
         case TOK_DIVISION:      return "DIVISION";
-        case TOK_MODULUS:       return "MODULUS";
+        case TOK_MODULO:        return "MODULO";
 
         case TOK_VOID:          return "VOID";
         case TOK_INT:           return "INT";

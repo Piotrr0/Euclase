@@ -8,7 +8,7 @@ const char* test_variables =
     "namespace main {"
     "    int a = 1;"
     "    float b = 2.5f;"
-    "    double c = 0d;"
+    "    double c = 0.0d;"
     ""
     "    int main() {"
     "        a = 10;"
@@ -87,16 +87,16 @@ const char* test_arithmetic =
     "}";
 
 
-TestCase* tests[TESTS_BUFFER];
+TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
-    //tests[0] = &(TestCase){"variables", test_variables, 10};
-    //tests[1] = &(TestCase){"pointers", test_pointers, 15};
-    //tests[2] = &(TestCase){"pointer_function_param", test_pointer_function_param, 10};
-    //tests[3] = &(TestCase){"casting", test_casting, 3};
-    //tests[4] = &(TestCase){"casting_pointer", test_casting_pointer, 5};
-    //tests[5] = &(TestCase){"nested_functions", test_nested_functions, 4};
-    tests[6] = &(TestCase){"arithmetic", test_arithmetic, 13};
+    tests[0] = (TestCase){"variables", test_variables, 10};
+    tests[1] = (TestCase){"pointers", test_pointers, 15};
+    tests[2] = (TestCase){"pointer_function_param", test_pointer_function_param, 10};
+    tests[3] = (TestCase){"casting", test_casting, 3};
+    tests[4] = (TestCase){"casting_pointer", test_casting_pointer, 5};
+    tests[5] = (TestCase){"nested_functions", test_nested_functions, 4};
+    tests[6] = (TestCase){"arithmetic", test_arithmetic, 13};
 }
 
 int run_test(const char* test) 
@@ -129,17 +129,20 @@ void run_tests() {
 
     int results[TESTS_BUFFER];
     for(int i = 0; i < TESTS_BUFFER; i++) {
-        if(tests[i] == NULL)
+        if(tests[i].name == NULL)
             continue;
 
-        results[i] = run_test(tests[i]->source);
+        results[i] = run_test(tests[i].source);
     }
 
     for(int i = 0; i < TESTS_BUFFER; i++) {
+        if(tests[i].name == NULL)
+            continue;
+
         int result = results[i];
-        if(result == tests[i]->expected)
-            printf("Test: %d (%s), Passed with result: %d\n", i, tests[i]->name, result);
+        if(result == tests[i].expected)
+            printf("Test: %d (%s), Passed with result: %d\n", i, tests[i].name, result);
         else
-            printf("Test: %d (%s), Failed with result: %d (expected %d)\n", i, tests[i]->name, result, tests[i]->expected);
+            printf("Test: %d (%s), Failed with result: %d (expected %d)\n", i, tests[i].name, result, tests[i].expected);
     }
 }

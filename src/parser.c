@@ -8,13 +8,15 @@ Token current_token;
 
 ASTNode* new_node(ASTNodeType type) {
     ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+            return NULL;
+
     node->type = type;
     node->name = NULL;
     node->value.type = VAL_NONE;
     node->value.int_val = 0;
     node->children = NULL;
     node->child_count = 0;
-
 
     node->type_info.base_type = TOK_VOID;
     node->type_info.pointer_level = 0;
@@ -89,78 +91,159 @@ int parse_pointer_level() {
     return level;
 }
 
-
-ASTNode* parse_dereference()
+ASTNode* parse_expression() 
 {
-    if(!match(TOK_MULTIPLICATION))
-        return NULL;
-
-    ASTNode* node = new_node(AST_DEREFERENCE);
-    if(node == NULL)
-        return NULL;
-
-    ASTNode* dereference_exp = parse_expression();
-    if(dereference_exp == NULL)
-    {
-        free_ast(node);
-        return NULL;
-    }
-
-    add_child(node, dereference_exp);
-    return node;
+    return parse_additive();
 }
 
-ASTNode* parse_address_of()
+ASTNode* parse_additive()
 {
-    if(!match(TOK_AMPERSAND))
+    ASTNode* left = parse_multiplicative();
+    if (left == NULL) 
         return NULL;
-
-    ASTNode* node = new_node(AST_ADDRESS_OF);
-    if(node == NULL)
-        return NULL;
-
-    ASTNode* address_of_exp = parse_expression();
-    if(address_of_exp == NULL)
+    
+    while (check(TOK_ADDITION) || check(TOK_SUBTRACTION))
     {
-        free_ast(node);
-        return NULL;
-    }
+        TokenType op = current_token.type;
+        advance();
+        
+        ASTNode* right = parse_multiplicative();
+        if (right == NULL) {
+            free_ast(left);
+            return NULL;
+        }
+        
+        ASTNodeType node_type;
+        switch(op) 
+        {
+            case TOK_ADDITION:      node_type = AST_ADDITION; break;
+            case TOK_SUBTRACTION:   node_type = AST_SUBTRACTION; break;
+            default:                node_type = AST_EXPRESSION; break;
+        }
 
-    add_child(node, address_of_exp);
-    return node;
+        ASTNode* binary_node = new_node(node_type);
+        add_child(binary_node, left);
+        add_child(binary_node, right);
+        
+        left = binary_node;
+    }
+    
+    return left;
+}
+
+ASTNode* parse_multiplicative() 
+{
+    ASTNode* left = parse_unary();
+    if (left == NULL) 
+        return NULL;
+    
+    while (check(TOK_MULTIPLICATION) || check(TOK_DIVISION) || check(TOK_MODULO))
+    {
+        TokenType op = current_token.type;
+        advance();
+        
+        ASTNode* right = parse_unary();
+        if (right == NULL) {
+            free_ast(left);
+            return NULL;
+        }
+        
+        ASTNodeType node_type;
+        switch(op) {
+            case TOK_MULTIPLICATION:    node_type = AST_MULTIPLICATION; break;
+            case TOK_DIVISION:          node_type = AST_DIVISION; break;
+            case TOK_MODULO:            node_type = AST_MODULO; break;
+            default:                    node_type = AST_EXPRESSION; break;
+        }
+        
+        ASTNode* binary_node = new_node(node_type);
+        add_child(binary_node, left);
+        add_child(binary_node, right);
+        
+        left = binary_node;
+    }
+    
+    return left;
+}
+
+ASTNode* parse_unary()
+{
+    if (check(TOK_MULTIPLICATION))
+        return parse_dereference();
+
+    if (check(TOK_AMPERSAND)) 
+        return parse_address_of();
+
+    if (is_casting())
+        return parse_casting();
+
+    return parse_postfix();
+}
+
+ASTNode* parse_postfix()
+{
+    if (is_func_call())
+        return parse_function_call();
+    
+    return parse_primary();
+}
+
+ASTNode* parse_primary()
+{
+    if (check(TOK_IDENTIFIER))
+        return parse_identifier_expression();
+    
+    return parse_primary_expression();
 }
 
 ASTNode* parse_primary_expression() {
-    ASTNode* node = new_node(AST_EXPRESSION);
+    if (check(TOK_LPAREN)) 
+    {
+        advance();
+        ASTNode* node = parse_additive();
+        if (node == NULL)
+            return NULL;
 
-    if (check(TOK_NUMBER_INT) || check(TOK_NUMBER_FLOAT) || check(TOK_NUMBER_DOUBLE)) {
+        if (!match(TOK_RPAREN)) {
+            printf("Parse error: expected ')'\n");
+            free_ast(node);
+            return NULL;
+        }
+        return node;
+    }
+    
+    if (check(TOK_NUMBER_INT) || check(TOK_NUMBER_FLOAT) || check(TOK_NUMBER_DOUBLE))
+    {
+        ASTNode* node = new_node(AST_EXPRESSION);
         node->value = current_token.value;
         advance();
-    } else {
-        printf("Parse error: expected primary expression\n");
-        free_ast(node);
-        return NULL;
+        return node;
     }
-
-    return node;
+    
+    printf("Parse error: expected primary expression\n");
+    return NULL;
 }
 
 ASTNode* parse_identifier_expression()
 {
     ASTNode* node = new_node(AST_IDENTIFIER);
-    if (check(TOK_IDENTIFIER)) {
-        node->name = strdup(current_token.text);
-        advance();
-    } 
+    if (!check(TOK_IDENTIFIER)) {
+        return NULL;
+    }
+
+    node->name = strdup(current_token.text);
+    advance(); 
     return node;
 }
 
-ASTNode* parse_dereference_expression() {
-    if (!match(TOK_MULTIPLICATION))
+ASTNode* parse_dereference()
+{
+    if(!check(TOK_MULTIPLICATION))
         return NULL;
 
-    ASTNode* expr = parse_expression();
-    if (!expr) {
+    advance();
+    ASTNode* expr = parse_unary();
+    if (expr == NULL) {
         return NULL;
     }
 
@@ -172,12 +255,13 @@ ASTNode* parse_dereference_expression() {
     return node;
 }
 
-ASTNode* parse_address_of_expression() {
-    if (!match(TOK_AMPERSAND))
+ASTNode* parse_address_of() {
+    if(!check(TOK_AMPERSAND))
         return NULL;
 
+    advance();
     ASTNode* node = new_node(AST_ADDRESS_OF);
-    ASTNode* expr = parse_expression();
+    ASTNode* expr = parse_unary();
     if (expr == NULL) {
         free_ast(node);
         return NULL;
@@ -186,7 +270,6 @@ ASTNode* parse_address_of_expression() {
     add_child(node, expr);
     return node;
 }
-
 
 // int x = sum(10, 10); 
 // int x = sum(10, &a);
@@ -213,7 +296,7 @@ ASTNode* parse_function_call()
 
     while (!check(TOK_RPAREN) && !check(TOK_EOF))
     {
-        ASTNode* arg = parse_expression();
+        ASTNode* arg = parse_additive();
         if(arg == NULL) {
             printf("Parse error: expected expression in function argument\n");
             return func_call_node;
@@ -234,6 +317,62 @@ ASTNode* parse_function_call()
     return func_call_node;
 }
 
+// float pi = 3.14f;
+// int v = (int) pi;
+ASTNode* parse_casting()
+{
+    if(!match(TOK_LPAREN)) {
+        printf("Parse error: expected: '('\n");
+        return NULL;
+    }
+
+    if(!is_type(current_token.type)) {
+        printf("Parse error: expected: 'TYPE'\n");
+        return NULL;
+    }
+
+    TypeInfo cast_type = parse_type(); 
+
+    if(!match(TOK_RPAREN)) {
+        printf("Parse error: expected: ')'\n");
+        return NULL;
+    }
+
+    ASTNode* expr = parse_unary();
+    if(expr == NULL) {
+        printf("Parse error: expected expression after cast\n");
+        return NULL;
+    }
+
+    ASTNode* cast_node = new_node(AST_CAST);
+    if(cast_node == NULL) {
+        free_ast(expr);
+        printf("Memory allocation failed\n");
+        return NULL;
+    }
+
+    cast_node->type_info = cast_type;
+    add_child(cast_node, expr);
+
+    return cast_node;
+}
+
+TypeInfo parse_type()
+{
+    if (!is_type(current_token.type)) {
+        printf("Parse error: expected return type\n");
+        exit(1);
+    }
+
+    TokenType ret_type = current_token.type;
+    advance();
+
+    int pointer_level = parse_pointer_level();
+
+    TypeInfo info = { .base_type = ret_type, .pointer_level = pointer_level };
+    return info;
+}
+
 int is_func_call()
 {
     if(!check(TOK_IDENTIFIER))
@@ -249,27 +388,42 @@ int is_func_call()
     return 1;
 }
 
-ASTNode* parse_expression() {
-    if (check(TOK_MULTIPLICATION))
-        return parse_dereference_expression();
+int is_casting()
+{
+    if(!check(TOK_LPAREN))
+        return 0;
 
-    if (check(TOK_AMPERSAND))
-        return parse_address_of_expression();
+    Token type_token = peek_token(1);
+    if(!is_type(type_token.type)) {
+        free_token(&type_token);
+        return 0;
+    }
+    free_token(&type_token);
 
-    if(is_casting())
-        return parse_casting();
+    int pointer_level = check_pointer_level(2);
+    Token rparen_token = peek_token(2 + pointer_level);
 
-    if(is_func_call())
-        return parse_function_call();
+    int is_cast = (rparen_token.type == TOK_RPAREN);
+    free_token(&rparen_token);
 
-    if (check(TOK_IDENTIFIER))
-        return parse_identifier_expression();
+    return is_cast;
+}
 
-    return parse_primary_expression();
+int check_pointer_level(int offset)
+{
+    int starting_offset = offset; 
+    Token next_token = peek_token(offset);
+
+    while(next_token.type == TOK_MULTIPLICATION) {
+        free_token(&next_token);
+        next_token = peek_token(++offset);
+    }
+    
+    free_token(&next_token);
+    return offset - starting_offset;
 }
 
 ASTNode* parse_assignment() {
-
     ASTNode* lhs = parse_expression();
     if (lhs == NULL) {
         printf("Parse error: expected lvalue\n");
@@ -307,7 +461,6 @@ ASTNode* parse_assignment() {
 }
 
 ASTNode* parse_variable_declaration() {
-
     TypeInfo type = parse_type();
 
     if (current_token.type != TOK_IDENTIFIER) {
@@ -324,13 +477,15 @@ ASTNode* parse_variable_declaration() {
     advance();
 
     if (!match(TOK_ASSIGNMENT)) {
-        printf("Parse error: expecter initialization");
+        printf("Parse error: expected initialization");
         return NULL;        
     }
 
     ASTNode* expr = parse_expression();
-    if(expr == NULL)
+    if(expr == NULL) {
         free_ast(node);
+        return NULL;
+    }
     
     add_child(node, expr);
     node->value.type = expr->value.type;
@@ -483,96 +638,6 @@ ASTNode* parse_parameters() {
     return param_list;
 }
 
-// float pi = 3.14f;
-// int v = (int) pi;
-ASTNode* parse_casting()
-{
-    if(!match(TOK_LPAREN)) {
-        printf("Parse error: exptected: '('\n");
-        return NULL;
-    }
-
-    if(!is_type(current_token.type)) {
-        printf("Parse error: expected: 'TYPE'\n");
-        return NULL;
-    }
-
-    TypeInfo cast_type = parse_type(); 
-
-    if(!match(TOK_RPAREN)) {
-        printf("Parse error: expected: ')\n");
-        return NULL;
-    }
-
-    ASTNode* expr = parse_expression();
-    if(expr == NULL) {
-        printf("Parse error: expected expression after cast\n");
-        return NULL;
-    }
-
-    ASTNode* cast_node = new_node(AST_CAST);
-    if(cast_node == NULL) {
-        free_ast(expr);
-        printf("Memory allocation failed\n");
-        return NULL;
-    }
-
-    cast_node->type_info = cast_type;
-    add_child(cast_node, expr);
-
-
-    return cast_node;
-}
-
-int is_casting()
-{
-    if(!check(TOK_LPAREN))
-        return 0;
-
-    Token type_token = peek_token(1);
-    if(!is_type(type_token.type)) {
-        free_token(&type_token);
-        return 0;
-    }
-    free_token(&type_token);
-
-    int pointer_level = check_pointer_level(2);
-    Token rparen_token = peek_token(2 + pointer_level);
-
-    int is_cast = (rparen_token.type == TOK_RPAREN);
-    free_token(&rparen_token);
-
-    return is_cast;
-}
-
-int check_pointer_level(int offset)
-{
-    int starting_offset = offset; 
-    Token next_token = peek_token(offset);
-    while(next_token.type == TOK_MULTIPLICATION) {
-        free_token(&next_token);
-        next_token = peek_token(++offset);
-    }
-    free_token(&next_token);
-    return offset - starting_offset;
-}
-
-TypeInfo parse_type()
-{
-    if (!is_type(current_token.type)) {
-        printf("Parse error: expected return type\n");
-        exit(1);
-    }
-
-    TokenType ret_type = current_token.type;
-    advance();
-
-    int pointer_level = parse_pointer_level();
-
-    TypeInfo info = { .base_type = ret_type, .pointer_level = pointer_level };
-    return info;
-}
-
 ASTNode* parse_function()
 {
     TypeInfo return_type = parse_type();
@@ -689,6 +754,11 @@ void print_ast(ASTNode* node, int level)
         case AST_ADDRESS_OF:    printf("AddressOf\n"); break;
         case AST_FUNC_CALL:     printf("Function call(name: %s)\n", node->name); break;
         case AST_IDENTIFIER:    printf("Identifier(%s)\n", node->name); break;
+        case AST_ADDITION:      printf("Addition\n"); break;
+        case AST_SUBTRACTION:   printf("Subtraction\n"); break;
+        case AST_MULTIPLICATION: printf("Multiplication\n"); break;
+        case AST_DIVISION:      printf("Division\n"); break;
+        case AST_MODULO:        printf("Modulo\n"); break;
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->type_info.base_type));
             if (node->type_info.pointer_level > 0) {
