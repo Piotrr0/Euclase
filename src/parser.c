@@ -458,6 +458,79 @@ int check_pointer_level(int offset)
     return offset - starting_offset;
 }
 
+ASTNode* parse_condition() {
+    if(!check(TOK_IF))
+        return NULL;
+
+    ASTNode* node_if = parse_if();
+    if(node_if == NULL)
+        return NULL;
+
+    if(!check(TOK_ELSE))
+        return node_if;
+
+    ASTNode* node_else = parse_else();
+    if(node_else == NULL) {
+        free_ast(node_if);
+        return NULL;
+    }
+
+    add_child(node_if, node_else);
+    return node_if;
+}
+
+ASTNode* parse_if() {
+    if(!match(TOK_IF)) 
+        return NULL;
+
+    if(!match(TOK_LPAREN))
+        return NULL;
+
+    ASTNode* condition = parse_expression();
+    if(condition == NULL)
+        return NULL;
+
+    if(!match(TOK_RPAREN)) {
+        free_ast(condition);
+        return NULL;
+    }
+
+    ASTNode* node_if = new_node(AST_IF);
+    if(node_if == NULL) {
+        free_ast(condition);
+        return NULL;
+    }
+
+    add_child(node_if, condition);
+
+    ASTNode* body = parse_block();
+    if(body == NULL) {
+        free_ast(condition);
+        return NULL;
+    }
+
+    add_child(node_if, body);
+    return node_if;
+}
+
+ASTNode* parse_else() {
+    if(!match(TOK_ELSE))
+        return NULL;
+
+    ASTNode* node_else = new_node(AST_ELSE);
+    if(node_else == NULL)
+        return NULL;
+
+    ASTNode* body = parse_block();
+    if(body == NULL) {
+        free_ast(node_else);
+        return NULL;
+    }
+
+    add_child(node_else, body);
+    return node_else;
+}
+
 ASTNode* parse_assignment() {
     ASTNode* lhs = parse_expression();
     if (lhs == NULL) {
@@ -563,6 +636,9 @@ ASTNode* parse_return() {
 ASTNode* parse_statement() {
     if (check(TOK_RETURN))
         return parse_return();
+
+    if (check(TOK_IF))
+        return parse_condition();
 
     if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION))
         return parse_assignment();
@@ -796,6 +872,8 @@ void print_ast(ASTNode* node, int level)
         case AST_MODULO:        printf("Modulo\n"); break;
         case AST_EQUAL:         printf("Equal\n"); break;
         case AST_NOT_EQUAL:     printf("NotEqual\n"); break;
+        case AST_IF:            printf("If\n"); break;
+        case AST_ELSE:            printf("Else\n"); break;
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->type_info.base_type));
             if (node->type_info.pointer_level > 0) {
