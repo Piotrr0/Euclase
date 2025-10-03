@@ -143,19 +143,20 @@ void codegen_condition(ASTNode* node)
     LLVMBuildBr(ctx.builder, mergeBB);
 
     LLVMPositionBuilderAtEnd(ctx.builder, elseBB);
-    if (node->child_count > 2)
-    {
-        ASTNode* elseNode = node->children[2];
-        if (elseNode->type == AST_IF) 
-            codegen_condition(elseNode);
-        else 
-            LLVMBuildBr(ctx.builder, mergeBB);
-    } 
-    else
-    {
-        LLVMBuildBr(ctx.builder, mergeBB);
-    }
 
+    ASTNode* elseNode = node->children[2];
+    if (elseNode->type == AST_IF) 
+        codegen_condition(elseNode);
+    else if (elseNode->type == AST_ELSE)
+    {
+        if (elseNode->child_count > 0) {
+            codegen_block(elseNode->children[0]);
+        }
+    }
+    else 
+        codegen_block(elseNode);
+            
+    LLVMBuildBr(ctx.builder, mergeBB);
     LLVMPositionBuilderAtEnd(ctx.builder, mergeBB);
 }
 
