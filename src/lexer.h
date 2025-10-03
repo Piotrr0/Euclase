@@ -20,6 +20,8 @@ typedef enum {
     TOK_UDOUBLE,
     TOK_CHAR,
     TOK_UCHAR,
+    TOK_IF,
+    TOK_ELSE,
 
     TOK_ADDITION,
     TOK_SUBTRACTION,

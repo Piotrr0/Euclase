@@ -19,7 +19,9 @@ Keyword keywords[] = {
     {"double",    TOK_DOUBLE},
     {"udouble",   TOK_UDOUBLE},
     {"char",      TOK_CHAR},
-    {"uchar",     TOK_UCHAR},
+    {"uchar",    TOK_UCHAR},
+    {"if",       TOK_IF},
+    {"else",     TOK_ELSE},
     {NULL,       TOK_IDENTIFIER}
 };
 
@@ -185,7 +187,6 @@ Token get_token_from_pos(int* pos) {
     if (c == '=' && peek_ahead(pos, 1) == '=') 
     {
         get(pos); get(pos);
-        printf("test");
         return make_token(TOK_EQUAL, "==", VAL_NONE);
     }
 
@@ -268,6 +269,8 @@ const char* token_type_name(TokenType type) {
         case TOK_UDOUBLE:       return "UDOUBLE";
         case TOK_CHAR:          return "CHAR";
         case TOK_UCHAR:         return "UCHAR";
+        case TOK_IF:            return "IF";
+        case TOK_ELSE:          return "ELSE";
 
         case TOK_IDENTIFIER:    return "IDENTIFIER";
         case TOK_NUMBER_INT:    return "NUMBER_INT";
