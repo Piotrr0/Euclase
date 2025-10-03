@@ -182,6 +182,18 @@ Token get_token_from_pos(int* pos) {
     char c = peek(pos);
 
     if (c == '\0') return make_token(TOK_EOF, NULL, VAL_NONE);
+    if (c == '=' && peek_ahead(pos, 1) == '=') 
+    {
+        get(pos); get(pos);
+        printf("test");
+        return make_token(TOK_EQUAL, "==", VAL_NONE);
+    }
+
+    if (c == '!' && peek_ahead(pos,1) == '=') 
+    {
+        get(pos); get(pos);
+        return make_token(TOK_NOT_EQUAL, "!=", VAL_NONE);
+    }
 
     if (lookup_for_symbol(c) != TOK_ERROR)
         return lex_symbol_from_pos(pos);
@@ -213,6 +225,11 @@ Token peek_token(int steps) {
     return token;
 }
 
+char peek_ahead(int* pos, int offset)
+{
+    return lexer.source[*pos + offset];
+}
+
 char peek(int* pos)
 {
     return lexer.source[*pos];
@@ -239,6 +256,8 @@ const char* token_type_name(TokenType type) {
         case TOK_MULTIPLICATION:return "MULTIPLICATION";
         case TOK_DIVISION:      return "DIVISION";
         case TOK_MODULO:        return "MODULO";
+        case TOK_EQUAL:         return "EQUAL";
+        case TOK_NOT_EQUAL:     return "NOT_EQUAL";
 
         case TOK_VOID:          return "VOID";
         case TOK_INT:           return "INT";

@@ -86,6 +86,34 @@ const char* test_arithmetic =
     "   }"
     "}";
 
+const char* test_equality = 
+    "namespace main {"
+    "   int main() {"
+    "       int a = 10;"
+    "       int b = 15;"
+    "       int c = 20;"
+    "       int r1 = (a == b);"
+    "       int r2 = (a != c);"
+    "       int r3 = (a == c);"
+    ""
+    "       float x = 3.14f;"
+    "       float y = 3.14f;"
+    "       float z = 2.71f;"
+    "       int r4 = (x == y);"
+    "       int r5 = (x != z);"
+    "       int r6 = (x != y);"
+    ""
+    "       double p = 1.23d;"
+    "       double q = 1.23d;"
+    "       double r = 4.56d;"
+    "       int r7 = (p == q);"
+    "       int r8 = (p != r);"
+    "       int r9 = (p == r);"
+    ""
+    "       return r1 + r2 + r3 + r4 + r5 + r6 + r7 + r8 + r9;"
+    "   }"
+    "}";
+
 
 TestCase tests[TESTS_BUFFER];
 
@@ -97,6 +125,7 @@ void init_tests() {
     tests[4] = (TestCase){"casting_pointer", test_casting_pointer, 5};
     tests[5] = (TestCase){"nested_functions", test_nested_functions, 4};
     tests[6] = (TestCase){"arithmetic", test_arithmetic, 18};
+    tests[7] = (TestCase){"equality", test_equality, 5};
 }
 
 int run_test(const char* test) 

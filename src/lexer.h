@@ -26,6 +26,8 @@ typedef enum {
     TOK_MULTIPLICATION,
     TOK_DIVISION,
     TOK_MODULO,
+    TOK_EQUAL,
+    TOK_NOT_EQUAL,
 
     TOK_IDENTIFIER,
     TOK_NUMBER_INT,
@@ -116,6 +118,7 @@ Token get_token();
 Token peek_token(int steps);
 
 char peek(int* pos);
+char peek_ahead(int* pos, int offset);
 char get(int* pos);
 
 const char* token_type_name(TokenType type);
