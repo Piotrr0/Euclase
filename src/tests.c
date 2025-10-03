@@ -114,6 +114,29 @@ const char* test_equality =
     "   }"
     "}";
 
+const char* test_conditions = 
+    "namespace main {"
+    "   int main() {"
+    "       int a = 1;"
+    "       int b = 2;"
+    "       int c = 0;"
+    ""
+    "       if(a == b) {"
+    "           c = 10;"
+    "       }"
+    "       else {"
+    "           if(b == 2) {"
+    "               c = 1;"
+    "           }"
+    "           else {"
+    "               c = -1;"
+    "           }"
+    "       }"
+    ""
+    "       return c;"
+    "   }"
+    "}";
+
 
 TestCase tests[TESTS_BUFFER];
 
@@ -126,6 +149,7 @@ void init_tests() {
     tests[5] = (TestCase){"nested_functions", test_nested_functions, 4};
     tests[6] = (TestCase){"arithmetic", test_arithmetic, 18};
     tests[7] = (TestCase){"equality", test_equality, 5};
+    tests[9] = (TestCase){"conditions", test_conditions, 1};
 }
 
 int run_test(const char* test) 

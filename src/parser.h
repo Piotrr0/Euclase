@@ -23,7 +23,9 @@ typedef enum {
     AST_DIVISION,
     AST_MODULO,
     AST_EQUAL,
-    AST_NOT_EQUAL
+    AST_NOT_EQUAL,
+    AST_IF,
+    AST_ELSE
 } ASTNodeType;
 
 typedef struct TypeInfo {
@@ -67,6 +69,9 @@ ASTNode* parse_address_of();
 ASTNode* parse_function_call();
 ASTNode* parse_casting();
 TypeInfo parse_type();
+ASTNode* parse_condition();
+ASTNode* parse_if();
+ASTNode* parse_else();
 ASTNode* parse_assignment();
 ASTNode* parse_variable_declaration();
 ASTNode* parse_return();
