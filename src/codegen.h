@@ -34,6 +34,7 @@ typedef struct CodegenContext
 } CodegenContext;
 
 extern CodegenContext ctx;
+extern LLVMValueRef current_function;
 
 void init_codegen(CodegenContext* ctx, const char* module_name);
 void cleanup_codegen(CodegenContext* ctx);
@@ -41,6 +42,8 @@ LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
 
 int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc, int is_global, TokenType base_type, int pointer_level);
 Variable* get_variable(CodegenContext* ctx, const char* name);
+
+void codegen_condition(ASTNode* node);
 
 LLVMValueRef codegen_equality(ASTNode* node);
 LLVMValueRef codegen_compare(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type, int is_not_equal);

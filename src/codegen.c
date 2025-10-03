@@ -7,6 +7,7 @@
 #include <string.h>
 
 CodegenContext ctx;
+LLVMValueRef current_function;
 
 void init_codegen(CodegenContext* ctx, const char* module_name) {
     LLVMInitializeNativeTarget();
@@ -125,6 +126,39 @@ int does_type_kind_match(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind* ou
     return 0;
 }
 
+void codegen_condition(ASTNode* node)
+{
+    if(node->type != AST_IF)
+        return;
+
+    LLVMValueRef condition = codegen_expression(node->children[0]);
+    LLVMBasicBlockRef thenBB  = LLVMAppendBasicBlock(current_function, "then");
+    LLVMBasicBlockRef elseBB  = LLVMAppendBasicBlock(current_function, "else");
+    LLVMBasicBlockRef mergeBB = LLVMAppendBasicBlock(current_function, "ifcont");
+
+    LLVMBuildCondBr(ctx.builder, condition, thenBB, elseBB);
+
+    LLVMPositionBuilderAtEnd(ctx.builder, thenBB);
+    codegen_block(node->children[1]);
+    LLVMBuildBr(ctx.builder, mergeBB);
+
+    LLVMPositionBuilderAtEnd(ctx.builder, elseBB);
+    if (node->child_count > 2)
+    {
+        ASTNode* elseNode = node->children[2];
+        if (elseNode->type == AST_IF) 
+            codegen_condition(elseNode);
+        else 
+            LLVMBuildBr(ctx.builder, mergeBB);
+    } 
+    else
+    {
+        LLVMBuildBr(ctx.builder, mergeBB);
+    }
+
+    LLVMPositionBuilderAtEnd(ctx.builder, mergeBB);
+}
+
 LLVMValueRef codegen_equality(ASTNode* node) {
     if (node->type != AST_EQUAL && node->type != AST_NOT_EQUAL)
         return NULL;
@@ -142,13 +176,10 @@ LLVMValueRef codegen_equality(ASTNode* node) {
 
 LLVMValueRef codegen_compare(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type, int is_not_equal)
 {
-    LLVMValueRef cmp;
     if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
-        cmp = LLVMBuildFCmp(ctx.builder, is_not_equal ? LLVMRealONE : LLVMRealOEQ, left, right, "fcmp");
+        return LLVMBuildFCmp(ctx.builder, is_not_equal ? LLVMRealONE : LLVMRealOEQ, left, right, "fcmp");
     else
-        cmp = LLVMBuildICmp(ctx.builder, is_not_equal ? LLVMIntNE : LLVMIntEQ, left, right, "icmp");
-    
-    return LLVMBuildZExt(ctx.builder, cmp, LLVMInt32Type(), "cmp_result");
+        return LLVMBuildICmp(ctx.builder, is_not_equal ? LLVMIntNE : LLVMIntEQ, left, right, "icmp");
 }
 
 LLVMValueRef codegen_arithmetic_op(ASTNode* node) {
@@ -346,7 +377,8 @@ void codegen_statement(ASTNode *node) {
     {
         case AST_RETURN:        codegen_return(node); break;
         case AST_VAR_DECL:      codegen_variable_declaration(node); break;
-        case AST_ASSIGN:        codegen_assign(node); break;;
+        case AST_ASSIGN:        codegen_assign(node); break;
+        case AST_IF:            codegen_condition(node); break;
         default:                return;
     }
 }
@@ -535,6 +567,8 @@ void codegen_function(ASTNode *node) {
     LLVMTypeRef func_type = LLVMFunctionType(ret_type, param_types, params_node->child_count, 0);
     LLVMValueRef function = LLVMAddFunction(ctx.module, node->name, func_type);
 
+    current_function = function;
+    
     LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(ctx.context, function, "entry");
     LLVMPositionBuilderAtEnd(ctx.builder, entry);
 

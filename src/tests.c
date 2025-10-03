@@ -124,6 +124,7 @@ const char* test_equality =
     "       else {"
     "           return 1;"
     "       }"
+    "       return 0;"
     "   }"    
     "}";
 
