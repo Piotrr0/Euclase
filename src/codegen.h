@@ -42,6 +42,9 @@ LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
 int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc, int is_global, TokenType base_type, int pointer_level);
 Variable* get_variable(CodegenContext* ctx, const char* name);
 
+LLVMValueRef codegen_equality(ASTNode* node);
+LLVMValueRef codegen_compare(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type, int is_not_equal);
+
 LLVMValueRef codegen_constant(ASTNode* node);
 LLVMValueRef codegen_variable_load(const char* name);
 LLVMValueRef codegen_cast(ASTNode* node);

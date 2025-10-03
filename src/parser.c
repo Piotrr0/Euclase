@@ -93,7 +93,42 @@ int parse_pointer_level() {
 
 ASTNode* parse_expression() 
 {
-    return parse_additive();
+    return parse_equality();
+}
+
+ASTNode* parse_equality()
+{
+    ASTNode* left = parse_additive();
+    if (left == NULL) 
+        return NULL;
+    
+    while (check(TOK_EQUAL) || check(TOK_NOT_EQUAL))
+    {
+        TokenType op = current_token.type;
+        advance();
+        
+        ASTNode* right = parse_additive();
+        if (right == NULL) {
+            free_ast(left);
+            return NULL;
+        }
+        
+        ASTNodeType node_type;
+        switch(op) 
+        {
+            case TOK_EQUAL:     node_type = AST_EQUAL; break;
+            case TOK_NOT_EQUAL: node_type = AST_NOT_EQUAL; break;
+            default:            node_type = AST_EXPRESSION; break;
+        }
+
+        ASTNode* binary_node = new_node(node_type);
+        add_child(binary_node, left);
+        add_child(binary_node, right);
+        
+        left = binary_node;
+    }
+    
+    return left;
 }
 
 ASTNode* parse_additive()
@@ -200,7 +235,7 @@ ASTNode* parse_primary_expression() {
     if (check(TOK_LPAREN)) 
     {
         advance();
-        ASTNode* node = parse_additive();
+        ASTNode* node = parse_expression();
         if (node == NULL)
             return NULL;
 
@@ -296,7 +331,7 @@ ASTNode* parse_function_call()
 
     while (!check(TOK_RPAREN) && !check(TOK_EOF))
     {
-        ASTNode* arg = parse_additive();
+        ASTNode* arg = parse_expression();
         if(arg == NULL) {
             printf("Parse error: expected expression in function argument\n");
             return func_call_node;
@@ -759,6 +794,8 @@ void print_ast(ASTNode* node, int level)
         case AST_MULTIPLICATION: printf("Multiplication\n"); break;
         case AST_DIVISION:      printf("Division\n"); break;
         case AST_MODULO:        printf("Modulo\n"); break;
+        case AST_EQUAL:         printf("Equal\n"); break;
+        case AST_NOT_EQUAL:     printf("NotEqual\n"); break;
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->type_info.base_type));
             if (node->type_info.pointer_level > 0) {

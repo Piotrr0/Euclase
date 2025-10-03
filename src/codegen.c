@@ -125,6 +125,32 @@ int does_type_kind_match(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind* ou
     return 0;
 }
 
+LLVMValueRef codegen_equality(ASTNode* node) {
+    if (node->type != AST_EQUAL && node->type != AST_NOT_EQUAL)
+        return NULL;
+
+    LLVMValueRef left  = codegen_expression(node->children[0]);
+    LLVMValueRef right = codegen_expression(node->children[1]);
+
+    LLVMTypeKind type;
+    if (!does_type_kind_match(left, right, &type))
+        return NULL;
+
+    int is_not_equal = (node->type == AST_NOT_EQUAL);
+    return codegen_compare(left, right, type, is_not_equal);
+}
+
+LLVMValueRef codegen_compare(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type, int is_not_equal)
+{
+    LLVMValueRef cmp;
+    if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        cmp = LLVMBuildFCmp(ctx.builder, is_not_equal ? LLVMRealONE : LLVMRealOEQ, left, right, "fcmp");
+    else
+        cmp = LLVMBuildICmp(ctx.builder, is_not_equal ? LLVMIntNE : LLVMIntEQ, left, right, "icmp");
+    
+    return LLVMBuildZExt(ctx.builder, cmp, LLVMInt32Type(), "cmp_result");
+}
+
 LLVMValueRef codegen_arithmetic_op(ASTNode* node) {
     LLVMValueRef left = codegen_expression(node->children[0]);
     LLVMValueRef right = codegen_expression(node->children[1]);
@@ -305,7 +331,9 @@ LLVMValueRef codegen_expression(ASTNode *node) {
         case AST_SUBTRACTION:
         case AST_MULTIPLICATION:
         case AST_DIVISION:
-        case AST_MODULO:        return codegen_arithmetic_op(node); 
+        case AST_MODULO:        return codegen_arithmetic_op(node);
+        case AST_EQUAL:
+        case AST_NOT_EQUAL:     return codegen_equality(node);
 
         default:
             printf("Unhandled expression type: %d\n", node->type);

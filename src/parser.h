@@ -21,7 +21,9 @@ typedef enum {
     AST_SUBTRACTION,
     AST_MULTIPLICATION,
     AST_DIVISION,
-    AST_MODULO
+    AST_MODULO,
+    AST_EQUAL,
+    AST_NOT_EQUAL
 } ASTNodeType;
 
 typedef struct TypeInfo {
@@ -52,6 +54,7 @@ int parse_pointer_level();
 
 
 ASTNode* parse_expression();
+ASTNode* parse_equality();
 ASTNode* parse_additive();
 ASTNode* parse_multiplicative();
 ASTNode* parse_unary();
