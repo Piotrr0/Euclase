@@ -58,7 +58,6 @@ int parse_pointer_level();
 
 
 ASTNode* parse_expression();
-ASTNode* parse_relational();
 ASTNode* parse_equality();
 ASTNode* parse_additive();
 ASTNode* parse_multiplicative();

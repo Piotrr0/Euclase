@@ -93,39 +93,7 @@ int parse_pointer_level() {
 
 ASTNode* parse_expression() 
 {
-    return parse_relational();
-}
-
-ASTNode* parse_relational() {
-    ASTNode* left = parse_equality();
-    if(left == NULL)
-        return NULL;
-
-    while(check(TOK_LESS) || check(TOK_GREATER))
-    {
-        TokenType op = current_token.type;
-        advance();
-
-        ASTNode* right = parse_equality();
-        if(right == NULL) {
-            free_ast(left);
-            return NULL;
-        }
-
-        ASTNodeType node_type;
-        switch (op) {
-            case TOK_LESS:      node_type = AST_LESS; break;
-            case TOK_GREATER:   node_type = AST_GREATER; break;
-            default:            node_type = AST_EXPRESSION; break;
-        }
-
-        ASTNode* binary_node = new_node(node_type);
-        add_child(binary_node, left);
-        add_child(binary_node, right);
-        
-        left = binary_node;
-    }
-    return left;
+    return parse_equality();
 }
 
 ASTNode* parse_equality()
@@ -134,7 +102,7 @@ ASTNode* parse_equality()
     if (left == NULL) 
         return NULL;
     
-    while (check(TOK_EQUAL) || check(TOK_NOT_EQUAL))
+    while (check(TOK_EQUAL) || check(TOK_NOT_EQUAL) || check(TOK_LESS) || check(TOK_GREATER))
     {
         TokenType op = current_token.type;
         advance();
@@ -150,6 +118,8 @@ ASTNode* parse_equality()
         {
             case TOK_EQUAL:     node_type = AST_EQUAL; break;
             case TOK_NOT_EQUAL: node_type = AST_NOT_EQUAL; break;
+            case TOK_LESS:      node_type = AST_LESS; break;
+            case TOK_GREATER:   node_type = AST_GREATER; break;
             default:            node_type = AST_EXPRESSION; break;
         }
 

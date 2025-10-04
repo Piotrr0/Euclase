@@ -188,12 +188,40 @@ LLVMValueRef codegen_equality(ASTNode* node) {
     return codegen_compare(left, right, type, is_not_equal);
 }
 
+LLVMValueRef codegen_relational(ASTNode* node) {
+    if(node->type != AST_LESS && node->type != AST_GREATER)
+        return NULL;
+
+    LLVMValueRef left  = codegen_expression(node->children[0]);
+    LLVMValueRef right = codegen_expression(node->children[1]);
+
+    LLVMTypeKind type;
+    if (!does_type_kind_match(left, right, &type))
+        return NULL;
+
+    return node->type == AST_LESS ? codegen_less(left, right, type) : codegen_greater(left, right, type);
+}
+
 LLVMValueRef codegen_compare(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type, int is_not_equal)
 {
     if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
         return LLVMBuildFCmp(ctx.builder, is_not_equal ? LLVMRealONE : LLVMRealOEQ, left, right, "fcmp");
     else
         return LLVMBuildICmp(ctx.builder, is_not_equal ? LLVMIntNE : LLVMIntEQ, left, right, "icmp");
+}
+
+LLVMValueRef codegen_greater(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type) {
+    if(type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        return LLVMBuildFCmp(ctx.builder, LLVMRealOGT, left, right, "fgr");
+    else
+        return LLVMBuildICmp(ctx.builder,LLVMIntSGT, left, right, "lgr");
+}
+
+LLVMValueRef codegen_less(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type) {
+    if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        return LLVMBuildFCmp(ctx.builder, LLVMRealOLT, left, right, "flt");
+    else
+        return LLVMBuildICmp(ctx.builder, LLVMIntSLT, left, right, "llt");
 }
 
 LLVMValueRef codegen_arithmetic_op(ASTNode* node) {
@@ -379,6 +407,8 @@ LLVMValueRef codegen_expression(ASTNode *node) {
         case AST_MODULO:        return codegen_arithmetic_op(node);
         case AST_EQUAL:
         case AST_NOT_EQUAL:     return codegen_equality(node);
+        case AST_LESS:
+        case AST_GREATER:       return codegen_relational(node);
 
         default:
             printf("Unhandled expression type: %d\n", node->type);
