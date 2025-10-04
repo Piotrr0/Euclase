@@ -148,31 +148,52 @@ void codegen_condition(ASTNode* node)
     LLVMValueRef condition = codegen_expression(node_condition);
     LLVMBasicBlockRef thenBB  = LLVMAppendBasicBlock(current_function, "then");
     LLVMBasicBlockRef mergeBB = LLVMAppendBasicBlock(current_function, "ifcont");
-    
+
     LLVMBasicBlockRef elseBB = NULL;
-    if(node_else != NULL) {
+    if (node_else != NULL) {
         elseBB = LLVMAppendBasicBlock(current_function, "else");
         LLVMBuildCondBr(ctx.builder, condition, thenBB, elseBB);
-    } 
+    }
     else
         LLVMBuildCondBr(ctx.builder, condition, thenBB, mergeBB);
 
     LLVMPositionBuilderAtEnd(ctx.builder, thenBB);
-    codegen_block(node_block);
-    LLVMBuildBr(ctx.builder, mergeBB);
+    codegen_then_block(node_block, mergeBB);
 
-    if(node_else != NULL) {
+    if (node_else != NULL) {
         LLVMPositionBuilderAtEnd(ctx.builder, elseBB);
-        
-        if (node_else->type == AST_IF)
-            codegen_condition(node_else);
-        else if (node_else->type == AST_ELSE)
-            codegen_block(node_else->children[0]);
-
-        LLVMBuildBr(ctx.builder, mergeBB);
+        codegen_else_block(node_else, mergeBB);
     }
 
     LLVMPositionBuilderAtEnd(ctx.builder, mergeBB);
+}
+
+void codegen_then_block(ASTNode* node_block, LLVMBasicBlockRef mergeBB)
+{
+    if(node_block == NULL || mergeBB == NULL)
+        return;
+
+    LLVMBasicBlockRef current_block = LLVMGetInsertBlock(ctx.builder);
+    codegen_block(node_block);
+
+    if (LLVMGetBasicBlockTerminator(current_block) == NULL)
+        LLVMBuildBr(ctx.builder, mergeBB);
+}
+
+void codegen_else_block(ASTNode* node_else, LLVMBasicBlockRef mergeBB)
+{
+    if (node_else == NULL || mergeBB == NULL) 
+        return;
+
+    LLVMBasicBlockRef current_block = LLVMGetInsertBlock(ctx.builder);
+
+    if (node_else->type == AST_IF)
+        codegen_condition(node_else);
+    else if (node_else->type == AST_ELSE)
+        codegen_block(node_else->children[0]);
+
+    if (LLVMGetBasicBlockTerminator(current_block) == NULL)
+        LLVMBuildBr(ctx.builder, mergeBB);
 }
 
 LLVMValueRef codegen_equality(ASTNode* node) {

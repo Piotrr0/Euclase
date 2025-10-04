@@ -44,6 +44,8 @@ int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc, int 
 Variable* get_variable(CodegenContext* ctx, const char* name);
 
 void codegen_condition(ASTNode* node);
+void codegen_then_block(ASTNode* node_block, LLVMBasicBlockRef mergeBB);
+void codegen_else_block(ASTNode* node_else, LLVMBasicBlockRef mergeBB);
 
 LLVMValueRef codegen_equality(ASTNode* node);
 LLVMValueRef codegen_compare(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type, int is_not_equal);
