@@ -129,7 +129,7 @@ const char* test_conditions =
     "               c = 1;"
     "           }"
     "           else {"
-    "               c = -1;"
+    "               c = 2;"
     "           }"
     "       }"
     ""
@@ -140,13 +140,14 @@ const char* test_conditions =
 const char* test_less_greater =
     "namespace main {"
     "   int main() {"
+    "       int c = 0;"
     "       if(1 > 2) {"
-    "           return 2;"
+    "           c = 2;"
     "       }"
     "       else {"
-    "           return 3;"
+    "           c = 3;"
     "       }"
-    "       return 1;"
+    "       return c;;"
     "   }"
     "}";
 
