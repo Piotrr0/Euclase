@@ -33,6 +33,8 @@ Symbol symbols[] = {
     {',', TOK_COMMA},
     {';', TOK_SEMICOLON},
     {'=', TOK_ASSIGNMENT},
+    {'<', TOK_LESS},
+    {'>', TOK_GREATER},
     {'&', TOK_AMPERSAND},
 
     {'+', TOK_ADDITION},
@@ -250,6 +252,8 @@ const char* token_type_name(TokenType type) {
         case TOK_COMMA:         return "COMMA";
         case TOK_SEMICOLON:     return "SEMICOLON";
         case TOK_ASSIGNMENT:    return "ASSIGNMENT";
+        case TOK_LESS:          return "LESS";
+        case TOK_GREATER:       return "GREATER";
         case TOK_AMPERSAND:     return "AMPERSAND";
 
         case TOK_ADDITION:      return "ADDITION";

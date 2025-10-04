@@ -1,7 +1,7 @@
 #ifndef TESTS_H
 #define TESTS_H
 
-#define TESTS_BUFFER 10
+#define TESTS_BUFFER 20
 
 typedef struct {
     const char* name;

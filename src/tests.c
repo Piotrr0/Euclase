@@ -137,6 +137,13 @@ const char* test_conditions =
     "   }"
     "}";
 
+const char* test_less_greater =
+    "namespace main {"
+    "   int main() {"
+    "       int a = 3;"
+    "       return a < 2;"
+    "   }"
+    "}";
 
 TestCase tests[TESTS_BUFFER];
 
@@ -150,6 +157,7 @@ void init_tests() {
     tests[6] = (TestCase){"arithmetic", test_arithmetic, 18};
     tests[7] = (TestCase){"equality", test_equality, 5};
     tests[9] = (TestCase){"conditions", test_conditions, 1};
+    tests[10] =(TestCase){"less_greater", test_less_greater, 1};
 }
 
 int run_test(const char* test) 

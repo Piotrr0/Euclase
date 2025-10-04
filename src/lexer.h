@@ -10,6 +10,8 @@ typedef enum {
     TOK_SEMICOLON,
     TOK_ASSIGNMENT,
     TOK_AMPERSAND,
+    TOK_LESS,
+    TOK_GREATER,
 
     TOK_VOID,
     TOK_INT,
