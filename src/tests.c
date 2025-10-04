@@ -140,14 +140,11 @@ const char* test_conditions =
 const char* test_less_greater =
     "namespace main {"
     "   int main() {"
-    "       int c = 0;"
+    "       int c = 3;"
     "       if(1 > 2) {"
     "           c = 2;"
     "       }"
-    "       else {"
-    "           c = 3;"
-    "       }"
-    "       return c;;"
+    "       return c;"
     "   }"
     "}";
 
