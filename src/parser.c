@@ -93,7 +93,39 @@ int parse_pointer_level() {
 
 ASTNode* parse_expression() 
 {
-    return parse_equality();
+    return parse_relational();
+}
+
+ASTNode* parse_relational() {
+    ASTNode* left = parse_equality();
+    if(left == NULL)
+        return NULL;
+
+    while(check(TOK_LESS) || check(TOK_GREATER))
+    {
+        TokenType op = current_token.type;
+        advance();
+
+        ASTNode* right = parse_equality();
+        if(right == NULL) {
+            free_ast(left);
+            return NULL;
+        }
+
+        ASTNodeType node_type;
+        switch (op) {
+            case TOK_LESS:      node_type = AST_LESS; break;
+            case TOK_GREATER:   node_type = AST_GREATER; break;
+            default:            node_type = AST_EXPRESSION; break;
+        }
+
+        ASTNode* binary_node = new_node(node_type);
+        add_child(binary_node, left);
+        add_child(binary_node, right);
+        
+        left = binary_node;
+    }
+    return left;
 }
 
 ASTNode* parse_equality()
@@ -867,13 +899,15 @@ void print_ast(ASTNode* node, int level)
         case AST_IDENTIFIER:    printf("Identifier(%s)\n", node->name); break;
         case AST_ADDITION:      printf("Addition\n"); break;
         case AST_SUBTRACTION:   printf("Subtraction\n"); break;
-        case AST_MULTIPLICATION: printf("Multiplication\n"); break;
+        case AST_MULTIPLICATION:printf("Multiplication\n"); break;
         case AST_DIVISION:      printf("Division\n"); break;
         case AST_MODULO:        printf("Modulo\n"); break;
         case AST_EQUAL:         printf("Equal\n"); break;
         case AST_NOT_EQUAL:     printf("NotEqual\n"); break;
         case AST_IF:            printf("If\n"); break;
-        case AST_ELSE:            printf("Else\n"); break;
+        case AST_ELSE:          printf("Else\n"); break;
+        case AST_LESS:          printf("Less\n"); break;
+        case AST_GREATER:       printf("Greater\n"); break;
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->type_info.base_type));
             if (node->type_info.pointer_level > 0) {

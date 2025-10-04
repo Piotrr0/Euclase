@@ -25,7 +25,9 @@ typedef enum {
     AST_EQUAL,
     AST_NOT_EQUAL,
     AST_IF,
-    AST_ELSE
+    AST_ELSE,
+    AST_LESS,
+    AST_GREATER
 } ASTNodeType;
 
 typedef struct TypeInfo {
@@ -56,6 +58,7 @@ int parse_pointer_level();
 
 
 ASTNode* parse_expression();
+ASTNode* parse_relational();
 ASTNode* parse_equality();
 ASTNode* parse_additive();
 ASTNode* parse_multiplicative();
