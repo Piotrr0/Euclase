@@ -64,6 +64,7 @@ ASTNode* parse_multiplicative();
 ASTNode* parse_unary();
 ASTNode* parse_postfix();
 ASTNode* parse_primary();
+ASTNode* parse_parens();
 ASTNode* parse_primary_expression();
 ASTNode* parse_identifier_expression();
 ASTNode* parse_dereference();

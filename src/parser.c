@@ -233,21 +233,27 @@ ASTNode* parse_primary()
     return parse_primary_expression();
 }
 
-ASTNode* parse_primary_expression() {
-    if (check(TOK_LPAREN)) 
-    {
-        advance();
-        ASTNode* node = parse_expression();
-        if (node == NULL)
-            return NULL;
+ASTNode* parse_parens() {
+    if (!check(TOK_LPAREN)) 
+        return NULL;
 
-        if (!match(TOK_RPAREN)) {
-            printf("Parse error: expected ')'\n");
-            free_ast(node);
-            return NULL;
-        }
-        return node;
+    advance();
+    ASTNode* node = parse_expression();
+    if (node == NULL)
+        return NULL;
+
+    if (!match(TOK_RPAREN)) {
+        printf("Parse error: expected ')'\n");
+        free_ast(node);
+        return NULL;
     }
+    return node;
+}
+
+ASTNode* parse_primary_expression() {
+    ASTNode* paren = parse_parens();
+    if(paren != NULL)
+        return paren;
     
     if (check(TOK_NUMBER_INT) || check(TOK_NUMBER_FLOAT) || check(TOK_NUMBER_DOUBLE))
     {
