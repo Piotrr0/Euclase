@@ -173,9 +173,9 @@ void codegen_then_block(ASTNode* node_block, LLVMBasicBlockRef mergeBB)
     if(node_block == NULL || mergeBB == NULL)
         return;
 
-    LLVMBasicBlockRef current_block = LLVMGetInsertBlock(ctx.builder);
     codegen_block(node_block);
 
+    LLVMBasicBlockRef current_block = LLVMGetInsertBlock(ctx.builder);
     if (LLVMGetBasicBlockTerminator(current_block) == NULL)
         LLVMBuildBr(ctx.builder, mergeBB);
 }
@@ -185,13 +185,12 @@ void codegen_else_block(ASTNode* node_else, LLVMBasicBlockRef mergeBB)
     if (node_else == NULL || mergeBB == NULL) 
         return;
 
-    LLVMBasicBlockRef current_block = LLVMGetInsertBlock(ctx.builder);
-
     if (node_else->type == AST_IF)
         codegen_condition(node_else);
     else if (node_else->type == AST_ELSE)
         codegen_block(node_else->children[0]);
 
+    LLVMBasicBlockRef current_block = LLVMGetInsertBlock(ctx.builder);
     if (LLVMGetBasicBlockTerminator(current_block) == NULL)
         LLVMBuildBr(ctx.builder, mergeBB);
 }

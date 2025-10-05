@@ -70,6 +70,11 @@ typedef struct Token {
     Value value;
 } Token;
 
+typedef struct Tokens {
+    Token* tokens;
+    int token_count;
+    int capacity;
+} Tokens;
 
 typedef struct Lexer {
     const char* source;
@@ -87,43 +92,36 @@ typedef struct Symbol {
 } Symbol;
 
 
-extern Lexer lexer;
 extern Symbol symbols[];
 extern Keyword keywords[];
 
 
 Token make_token(TokenType type, const char* text, ValueType vtype);
-Token debug_return(Token token);
-void free_token(Token* token);
-
 Token make_int_token(int value);
 Token make_float_token(float value);
 Token make_double_token(double value);
+void free_token(Token* token);
+
+Tokens* create_tokens();
+void add_token(Tokens* tokens, Token token);
+void free_tokens(Tokens* tokens);
+
 TokenType lookup_for_keyword(const char* str);
 TokenType lookup_for_symbol(char c);
 
 void init_lexer(Lexer* lexer, const char* source);
 
-void skip_whitespaces_from_pos(int* pos);
-void skip_whitespaces();
+Tokens* tokenize(Lexer* lexer, const char* source, int debug);
 
-Token lex_symbol_form_pos(int* pos);
-Token lex_symbol();
+Token lex_symbol(Lexer* lexer);
+Token lex_number(Lexer* lexer);
+Token lex_keyword(Lexer* lexer);
+Token lex_next_token(Lexer* lexer);
 
-Token lex_number_form_pos(int* pos);
-Token lex_number();
-
-Token lex_keyword_from_pos(int* pos);
-Token lex_keyword();
-
-Token get_token_from_pos(int* pos);
-Token get_token();
-
-Token peek_token(int steps);
-
-char peek(int* pos);
-char peek_ahead(int* pos, int offset);
-char get(int* pos);
+void skip_whitespaces(Lexer* lexer);
+char peek(Lexer* lexer);
+char peek_ahead(Lexer* lexer, int offset);
+char get(Lexer* lexer);
 
 const char* token_type_name(TokenType type);
 

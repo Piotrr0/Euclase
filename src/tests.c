@@ -1,4 +1,5 @@
 #include "tests.h"
+#include "lexer.h"
 #include "parser.h"
 #include "codegen.h"
 #include <stdio.h>
@@ -165,7 +166,9 @@ void init_tests() {
 
 int run_test(const char* test) 
 {
-    init_lexer(&lexer, test);
+    Lexer lexer;
+    Tokens* tokens = tokenize(&lexer, test, 1);
+    init_parser(tokens);
 
     ASTNode* root = parse_program();
     if(root == NULL) {

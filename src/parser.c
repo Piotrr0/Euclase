@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-Token current_token;
+Parser parser;
 
 ASTNode* new_node(ASTNodeType type) {
     ASTNode* node = malloc(sizeof(ASTNode));
@@ -58,12 +58,12 @@ void free_ast(ASTNode* node)
 }
 
 void advance() {
-    if (current_token.type != TOK_EOF)
-        current_token = get_token();
+    if (parser.current_token < parser.tokens->token_count - 1)
+        parser.current_token++;
 }
 
 int match(TokenType type) {
-    if (current_token.type == type) {
+    if (current_token()->type == type) {
         advance();
         return 1;
     }
@@ -71,7 +71,7 @@ int match(TokenType type) {
 }
 
 int check(TokenType type) {
-    return current_token.type == type;
+    return current_token()->type == type;
 }
 
 int is_type(TokenType t) {
@@ -104,7 +104,7 @@ ASTNode* parse_equality()
     
     while (check(TOK_EQUAL) || check(TOK_NOT_EQUAL) || check(TOK_LESS) || check(TOK_GREATER))
     {
-        TokenType op = current_token.type;
+        TokenType op = current_token()->type;
         advance();
         
         ASTNode* right = parse_additive();
@@ -141,7 +141,7 @@ ASTNode* parse_additive()
     
     while (check(TOK_ADDITION) || check(TOK_SUBTRACTION))
     {
-        TokenType op = current_token.type;
+        TokenType op = current_token()->type;
         advance();
         
         ASTNode* right = parse_multiplicative();
@@ -176,7 +176,7 @@ ASTNode* parse_multiplicative()
     
     while (check(TOK_MULTIPLICATION) || check(TOK_DIVISION) || check(TOK_MODULO))
     {
-        TokenType op = current_token.type;
+        TokenType op = current_token( )->type;
         advance();
         
         ASTNode* right = parse_unary();
@@ -258,7 +258,7 @@ ASTNode* parse_primary_expression() {
     if (check(TOK_NUMBER_INT) || check(TOK_NUMBER_FLOAT) || check(TOK_NUMBER_DOUBLE))
     {
         ASTNode* node = new_node(AST_EXPRESSION);
-        node->value = current_token.value;
+        node->value = current_token()->value;
         advance();
         return node;
     }
@@ -274,7 +274,7 @@ ASTNode* parse_identifier_expression()
         return NULL;
     }
 
-    node->name = strdup(current_token.text);
+    node->name = strdup(current_token()->text);
     advance(); 
     return node;
 }
@@ -322,7 +322,7 @@ ASTNode* parse_function_call()
         return NULL;
     }
 
-    char* name = strdup(current_token.text);
+    char* name = strdup(current_token()->text);
     advance();
 
     if(!match(TOK_LPAREN)) {
@@ -369,7 +369,7 @@ ASTNode* parse_casting()
         return NULL;
     }
 
-    if(!is_type(current_token.type)) {
+    if(!is_type(current_token()->type)) {
         printf("Parse error: expected: 'TYPE'\n");
         return NULL;
     }
@@ -402,12 +402,12 @@ ASTNode* parse_casting()
 
 TypeInfo parse_type()
 {
-    if (!is_type(current_token.type)) {
+    if (!is_type(current_token()->type)) {
         printf("Parse error: expected return type\n");
         exit(1);
     }
 
-    TokenType ret_type = current_token.type;
+    TokenType ret_type = current_token()->type;
     advance();
 
     int pointer_level = parse_pointer_level();
@@ -421,48 +421,39 @@ int is_func_call()
     if(!check(TOK_IDENTIFIER))
         return 0;
 
-    Token lparen_token = peek_token(1);
-    if(lparen_token.type != TOK_LPAREN) {
-        free_token(&lparen_token);
+    Token* lparen_token = peek_token(1);
+    if(lparen_token->type != TOK_LPAREN) {
+        free_token(lparen_token);
         return 0;
     }
 
-    free_token(&lparen_token);
+    free_token(lparen_token);
     return 1;
 }
 
-int is_casting()
-{
+int is_casting() {
     if(!check(TOK_LPAREN))
         return 0;
 
-    Token type_token = peek_token(1);
-    if(!is_type(type_token.type)) {
-        free_token(&type_token);
+    Token* type_token = peek_token(1);
+    if(!is_type(type_token->type))
         return 0;
-    }
-    free_token(&type_token);
 
     int pointer_level = check_pointer_level(2);
-    Token rparen_token = peek_token(2 + pointer_level);
+    Token* rparen_token = peek_token(2 + pointer_level);
 
-    int is_cast = (rparen_token.type == TOK_RPAREN);
-    free_token(&rparen_token);
-
-    return is_cast;
+    return (rparen_token->type == TOK_RPAREN);
 }
 
-int check_pointer_level(int offset)
+int check_pointer_level(int offset) 
 {
     int starting_offset = offset; 
-    Token next_token = peek_token(offset);
+    Token* next_token = peek_token(offset);
 
-    while(next_token.type == TOK_MULTIPLICATION) {
-        free_token(&next_token);
+    while(next_token->type == TOK_MULTIPLICATION) {
         next_token = peek_token(++offset);
     }
     
-    free_token(&next_token);
     return offset - starting_offset;
 }
 
@@ -579,7 +570,7 @@ ASTNode* parse_assignment() {
 ASTNode* parse_variable_declaration() {
     TypeInfo type = parse_type();
 
-    if (current_token.type != TOK_IDENTIFIER) {
+    if (current_token()->type != TOK_IDENTIFIER) {
         printf("Parse error: expected variable name\n");
         return NULL;
     }
@@ -588,7 +579,7 @@ ASTNode* parse_variable_declaration() {
     if(node == NULL)
         return NULL;
 
-    node->name = strdup(current_token.text);
+    node->name = strdup(current_token()->text);
     node->type_info = type;
     advance();
 
@@ -651,7 +642,7 @@ ASTNode* parse_statement() {
     if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION))
         return parse_assignment();
 
-    if (is_type(current_token.type))
+    if (is_type(current_token()->type))
         return parse_variable_declaration();
 
     printf("Parse error: unknown statement\n");
@@ -684,24 +675,16 @@ ASTNode* parse_block()
     return block;
 }
 
-int is_func_declaration()
-{
-    if(!is_type(current_token.type))
+int is_func_declaration() {
+    if(!is_type(current_token()->type))
         return 0;
 
-    Token next_token = peek_token(1);
-    if (next_token.type != TOK_IDENTIFIER) {
-        free_token(&next_token);
+    Token* next_token = peek_token(1);
+    if (next_token->type != TOK_IDENTIFIER)
         return 0;
-    }
 
-    Token third_token = peek_token(2);
-    int is_func = (third_token.type == TOK_LPAREN);
-    
-    free_token(&next_token);
-    free_token(&third_token);
-    
-    return is_func;
+    Token* third_token = peek_token(2);
+    return (third_token->type == TOK_LPAREN);
 }
 
 ASTNode* parse_parameters() {
@@ -716,7 +699,7 @@ ASTNode* parse_parameters() {
 
     while (!check(TOK_RPAREN) && !check(TOK_EOF)) 
     {
-        if (!is_type(current_token.type)) {
+        if (!is_type(current_token()->type)) {
             printf("Parse error: expected type in parameter list\n");
             free_ast(param_list);
             return NULL;
@@ -729,7 +712,7 @@ ASTNode* parse_parameters() {
             free_ast(param_list);
             return NULL;
         }
-        char* param_name = strdup(current_token.text);
+        char* param_name = strdup(current_token()->text);
         advance();
 
         ASTNode* param_node = new_node(AST_VAR_DECL);
@@ -771,7 +754,7 @@ ASTNode* parse_function()
         return NULL;
 
     func->type_info = return_type;
-    func->name = strdup(current_token.text);
+    func->name = strdup(current_token()->text);
     advance();
 
     ASTNode* params = parse_parameters();
@@ -800,7 +783,7 @@ ASTNode* parse_namespace(ASTNodeType type)
         return NULL;
     }
 
-    char* namespace_name = strdup(current_token.text);
+    char* namespace_name = strdup(current_token()->text);
     if (!match(TOK_IDENTIFIER)) {
         free(namespace_name);
         printf("Parse error: expected namespace name\n");
@@ -814,9 +797,7 @@ ASTNode* parse_namespace(ASTNodeType type)
     return namespace_node;
 }
 
-ASTNode* parse_program()
-{
-    current_token = get_token();
+ASTNode* parse_program() {
     ASTNode* program = parse_namespace(AST_PROGRAM);
     if(program == NULL)
         return NULL;
@@ -834,8 +815,7 @@ ASTNode* parse_program()
             if(func != NULL)
                 add_child(program, func);
         }
-
-        else if (is_type(current_token.type))
+        else if (is_type(current_token()->type))
         {
             ASTNode* var_decl = parse_variable_declaration();
             if(var_decl != NULL)
@@ -854,6 +834,28 @@ ASTNode* parse_program()
     }
 
     return program;
+}
+
+void init_parser(Tokens* tokens) {
+    parser.tokens = tokens;
+    parser.current_token = 0;
+}
+
+Token* current_token()
+{
+    if (parser.current_token >= parser.tokens->token_count)
+        return &parser.tokens->tokens[parser.tokens->token_count - 1];
+
+    return &parser.tokens->tokens[parser.current_token];
+}
+
+Token* peek_token(int offset)
+{
+    int pos = parser.current_token + offset;
+    if (pos >= parser.tokens->token_count)
+        return &parser.tokens->tokens[parser.tokens->token_count - 1];
+
+    return &parser.tokens->tokens[pos];
 }
 
 void print_ast(ASTNode* node, int level) 

@@ -46,14 +46,25 @@ typedef struct ASTNode {
     int child_count;
 } ASTNode;
 
+typedef struct Parser {
+    Tokens* tokens;
+    int current_token;
+} Parser;
+
+extern Parser parser;
+
+void init_parser(Tokens* tokens);
+Token* current_token();
+Token* peek_token(int offset);
+void advance();
+int match(TokenType type);
+int is_type(TokenType t);
+
 
 ASTNode* new_node(ASTNodeType type);
 void add_child(ASTNode* parent, ASTNode* child);
 void free_ast(ASTNode* node);
 
-void advance();
-int match(TokenType type);
-int is_type(TokenType t);
 int parse_pointer_level();
 
 
