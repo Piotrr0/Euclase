@@ -132,17 +132,17 @@ void codegen_condition(ASTNode* node)
         return;
 
     ASTNode* node_condition = NULL;
-    ASTNode* node_block = NULL;
-    ASTNode* node_else = NULL;
+    ASTNode* node_then_block = NULL;
+    ASTNode* node_else_block = NULL;
 
     switch(node->child_count) {
-        case 3: node_else = node->children[2];
-        case 2: node_block = node->children[1];
+        case 3: node_else_block = node->children[2];
+        case 2: node_then_block = node->children[1];
         case 1: node_condition = node->children[0]; break; 
         default: return;
     }
 
-    if(node_condition == NULL || node_block == NULL)
+    if(node_condition == NULL || node_then_block == NULL)
         return;
 
     LLVMValueRef condition = codegen_expression(node_condition);
@@ -150,7 +150,7 @@ void codegen_condition(ASTNode* node)
     LLVMBasicBlockRef mergeBB = LLVMAppendBasicBlock(current_function, "ifcont");
 
     LLVMBasicBlockRef elseBB = NULL;
-    if (node_else != NULL) {
+    if (node_else_block != NULL) {
         elseBB = LLVMAppendBasicBlock(current_function, "else");
         LLVMBuildCondBr(ctx.builder, condition, thenBB, elseBB);
     }
@@ -158,11 +158,11 @@ void codegen_condition(ASTNode* node)
         LLVMBuildCondBr(ctx.builder, condition, thenBB, mergeBB);
 
     LLVMPositionBuilderAtEnd(ctx.builder, thenBB);
-    codegen_then_block(node_block, mergeBB);
+    codegen_then_block(node_then_block, mergeBB);
 
-    if (node_else != NULL) {
+    if (node_else_block != NULL) {
         LLVMPositionBuilderAtEnd(ctx.builder, elseBB);
-        codegen_else_block(node_else, mergeBB);
+        codegen_else_block(node_else_block, mergeBB);
     }
 
     LLVMPositionBuilderAtEnd(ctx.builder, mergeBB);
@@ -184,11 +184,8 @@ void codegen_else_block(ASTNode* node_else, LLVMBasicBlockRef mergeBB)
 {
     if (node_else == NULL || mergeBB == NULL) 
         return;
-
-    if (node_else->type == AST_IF)
-        codegen_condition(node_else);
-    else if (node_else->type == AST_ELSE)
-        codegen_block(node_else->children[0]);
+    
+    codegen_block(node_else);
 
     LLVMBasicBlockRef current_block = LLVMGetInsertBlock(ctx.builder);
     if (LLVMGetBasicBlockTerminator(current_block) == NULL)

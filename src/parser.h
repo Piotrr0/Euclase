@@ -26,7 +26,6 @@ typedef enum {
     AST_EQUAL,
     AST_NOT_EQUAL,
     AST_IF,
-    AST_ELSE,
     AST_LESS,
     AST_GREATER
 } ASTNodeType;

@@ -535,17 +535,10 @@ ASTNode* parse_else() {
     if(!match(TOK_ELSE))
         return NULL;
 
-    ASTNode* node_else = new_node(AST_ELSE);
+    ASTNode* node_else = parse_block();
     if(node_else == NULL)
         return NULL;
 
-    ASTNode* body = parse_block();
-    if(body == NULL) {
-        free_ast(node_else);
-        return NULL;
-    }
-
-    add_child(node_else, body);
     return node_else;
 }
 
@@ -903,7 +896,6 @@ void print_ast(ASTNode* node, int level)
         case AST_EQUAL:         printf("Equal\n"); break;
         case AST_NOT_EQUAL:     printf("NotEqual\n"); break;
         case AST_IF:            printf("If\n"); break;
-        case AST_ELSE:          printf("Else\n"); break;
         case AST_LESS:          printf("Less\n"); break;
         case AST_GREATER:       printf("Greater\n"); break;
         case AST_CAST:
