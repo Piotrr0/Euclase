@@ -152,8 +152,9 @@ const char* test_less_greater =
 const char* test_negative_numbers = 
     "namespace main {"
     "   int main() {"
-    "       int c = -3;"
-    "       return c;"
+    "       int a = 100;"
+    "       int b = -50;"
+    "       return a - b;"
     "   }"
     "}";
 
@@ -170,7 +171,7 @@ void init_tests() {
     tests[7] = (TestCase){"equality", test_equality, 5};
     tests[9] = (TestCase){"conditions", test_conditions, 1};
     tests[10] =(TestCase){"less_greater", test_less_greater, 2};
-    tests[11] =(TestCase){"negative", test_negative_numbers, -3};
+    tests[11] =(TestCase){"negative", test_negative_numbers, 150};
 }
 
 int run_test(const char* test) 

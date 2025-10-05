@@ -412,23 +412,46 @@ LLVMValueRef generate_cast_instruction(LLVMValueRef value, LLVMTypeRef from_type
     return NULL;
 }
 
+LLVMValueRef codegen_unary_minus(ASTNode* node) {
+    if (node->type != AST_UNARY_MINUS)
+        return NULL;
+
+    LLVMValueRef expression = codegen_expression(node->children[0]);
+    if (expression == NULL)
+        return NULL;
+
+    LLVMTypeRef type = LLVMTypeOf(expression);
+    LLVMTypeKind type_kind = LLVMGetTypeKind(type);
+
+    if (type_kind == LLVMFloatTypeKind || type_kind == LLVMDoubleTypeKind)
+        return LLVMBuildFNeg(ctx.builder, expression, "fneg");
+    else if (type_kind == LLVMIntegerTypeKind)
+        return LLVMBuildNeg(ctx.builder, expression, "neg");
+
+    return NULL;
+}
+
 LLVMValueRef codegen_expression(ASTNode *node) {
     if (!node) return NULL;
 
     switch (node->type) {
+        case AST_EXPRESSION:    return codegen_constant(node);
+        case AST_IDENTIFIER:    return codegen_variable_load(node->name);
+        case AST_FUNC_CALL:     return codegen_function_call(node);
         case AST_ADDRESS_OF:    return codegen_address_of(node);
         case AST_DEREFERENCE:   return codegen_dereference(node);
-        case AST_FUNC_CALL:     return codegen_function_call(node);
         case AST_CAST:          return codegen_cast(node);
-        case AST_IDENTIFIER:    return codegen_variable_load(node->name);
-        case AST_EXPRESSION:    return codegen_constant(node);
+        case AST_UNARY_MINUS:   return codegen_unary_minus(node);
+
         case AST_ADDITION:      
         case AST_SUBTRACTION:
         case AST_MULTIPLICATION:
         case AST_DIVISION:
         case AST_MODULO:        return codegen_arithmetic_op(node);
+
         case AST_EQUAL:
         case AST_NOT_EQUAL:     return codegen_equality(node);
+
         case AST_LESS:
         case AST_GREATER:       return codegen_relational(node);
 

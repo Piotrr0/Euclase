@@ -78,6 +78,7 @@ void codegen_variable_declaration(ASTNode* node);
 void codegen_global_variable_declaration(ASTNode* node);
 void codegen_assign(ASTNode* node);
 
+LLVMValueRef codegen_unary_minus(ASTNode* node);
 LLVMValueRef codegen_expression(ASTNode* node);
 LLVMValueRef codegen_dereference(ASTNode* node);
 LLVMValueRef codegen_address_of(ASTNode* node);
