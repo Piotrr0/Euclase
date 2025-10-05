@@ -14,6 +14,7 @@ typedef enum {
     AST_ASSIGN,
     AST_DEREFERENCE,
     AST_ADDRESS_OF,
+    AST_UNARY_MINUS,
     AST_CAST,
     AST_PARAM_LIST,
     AST_FUNC_CALL,
