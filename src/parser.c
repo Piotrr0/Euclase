@@ -203,8 +203,27 @@ ASTNode* parse_multiplicative()
     return left;
 }
 
+ASTNode* parse_negative_unary() {
+    advance();
+    ASTNode* unary_expression = parse_unary();
+    if (unary_expression == NULL) {
+        return NULL;
+    }
+        
+    ASTNode* unary_minus_node = new_node(AST_UNARY_MINUS);
+    if (unary_minus_node == NULL) {
+        free_ast(unary_expression);
+        return NULL;
+    }
+    add_child(unary_minus_node, unary_expression);
+    return unary_minus_node;
+}
+
 ASTNode* parse_unary()
 {
+    if(check(TOK_SUBTRACTION))
+        return parse_negative_unary();
+
     if (check(TOK_MULTIPLICATION))
         return parse_dereference();
 
@@ -875,6 +894,7 @@ void print_ast(ASTNode* node, int level)
         case AST_ADDRESS_OF:    printf("AddressOf\n"); break;
         case AST_FUNC_CALL:     printf("Function call(name: %s)\n", node->name); break;
         case AST_IDENTIFIER:    printf("Identifier(%s)\n", node->name); break;
+        case AST_UNARY_MINUS:   printf("Unary minus\n"); break;
         case AST_ADDITION:      printf("Addition\n"); break;
         case AST_SUBTRACTION:   printf("Subtraction\n"); break;
         case AST_MULTIPLICATION:printf("Multiplication\n"); break;
