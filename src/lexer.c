@@ -4,9 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-Lexer lexer;
-
 #define MAX_TOKEN_LEN 64
+#define INITIAL_CAPACITY 32
 
 Keyword keywords[] = {
     {"return",    TOK_RETURN},
@@ -81,6 +80,55 @@ Token make_double_token(double value) {
     return t;
 }
 
+Tokens* create_tokens() 
+{
+    Tokens* tokens = malloc(sizeof(Tokens));
+    if (tokens == NULL) 
+        return NULL;
+    
+    tokens->tokens = malloc(INITIAL_CAPACITY * sizeof(Token));
+    if (tokens->tokens == NULL) {
+        free(tokens);
+        return NULL;
+    }
+    
+    tokens->token_count = 0;
+    tokens->capacity = INITIAL_CAPACITY;
+    return tokens;
+}
+
+void add_token(Tokens* tokens, Token token) 
+{
+    if (tokens == NULL) 
+        return;
+    
+    if (tokens->token_count >= tokens->capacity) {
+        int new_capacity = tokens->capacity * 2;
+        Token* new_tokens = realloc(tokens->tokens, new_capacity * sizeof(Token));
+        if (new_tokens == NULL) {
+            fprintf(stderr, "Failed to reallocate tokens array\n");
+            return;
+        }
+
+        tokens->tokens = new_tokens;
+        tokens->capacity = new_capacity;
+    }
+    
+    tokens->tokens[tokens->token_count++] = token;
+}
+
+void free_tokens(Tokens* tokens) {
+    if (tokens == NULL)
+        return;
+    
+    for (int i = 0; i < tokens->token_count; i++) {
+        free_token(&tokens->tokens[i]);
+    }
+    
+    free(tokens->tokens);
+    free(tokens);
+}
+
 TokenType lookup_for_symbol(char c) {
     for (int i = 0; symbols[i].ch; i++) {
         if (symbols[i].ch == c)
@@ -102,44 +150,34 @@ void init_lexer(Lexer* lexer, const char* source) {
     lexer->position = 0;
 }
 
-void skip_whitespaces_from_pos(int* pos)
-{
-    while (peek(pos) == ' ' || peek(pos) == '\t' || peek(pos) == '\n' || peek(pos) == '\r') {
-        get(pos);
+void skip_whitespaces(Lexer* lexer) {
+    while (peek(lexer) == ' ' || peek(lexer) == '\t' || peek(lexer) == '\n' || peek(lexer) == '\r') {
+        get(lexer);
     }
 }
 
-void skip_whitespaces()
-{
-    skip_whitespaces_from_pos(&lexer.position);
-}
-
-Token lex_symbol_from_pos(int* pos) {
-    char c = get(pos);
+Token lex_symbol(Lexer* lexer) {
+    char c = get(lexer);
     TokenType type = lookup_for_symbol(c);
     return make_token(type, NULL, VAL_NONE);
 }
 
-Token lex_symbol() {
-    return lex_symbol_from_pos(&lexer.position);
-}
-
-Token lex_number_from_pos(int* pos) {
+Token lex_number(Lexer* lexer) {
     char buffer[MAX_TOKEN_LEN];
     int i = 0;
     int has_dot = 0;
 
-    while ((isdigit(peek(pos)) || peek(pos) == '.') && i < MAX_TOKEN_LEN - 1) {
-        if (peek(pos) == '.') {
+    while ((isdigit(peek(lexer)) || peek(lexer) == '.') && i < MAX_TOKEN_LEN - 1) {
+        if (peek(lexer) == '.') {
             if (has_dot) break;
             has_dot = 1;
         }
-        buffer[i++] = get(pos);
+        buffer[i++] = get(lexer);
     }
     buffer[i] = '\0';
 
-    char suffix = peek(pos);
-    if (suffix == 'f' || suffix == 'd') get(pos);
+    char suffix = peek(lexer);
+    if (suffix == 'f' || suffix == 'd') get(lexer);
 
     if (!has_dot && suffix != 'f' && suffix != 'd') 
         return make_int_token(atoi(buffer));
@@ -151,16 +189,12 @@ Token lex_number_from_pos(int* pos) {
     return make_token(TOK_ERROR, NULL, VAL_NONE);
 }
 
-Token lex_number() {
-    return lex_number_from_pos(&lexer.position);
-}
-
-Token lex_keyword_from_pos(int* pos) {
+Token lex_keyword(Lexer* lexer) {
     char buffer[MAX_TOKEN_LEN];
     int i = 0;
 
-    while ((isalnum(peek(pos)) || peek(pos) == '_') && i < MAX_TOKEN_LEN - 1) {
-        buffer[i++] = get(pos);
+    while ((isalnum(peek(lexer)) || peek(lexer) == '_') && i < MAX_TOKEN_LEN - 1) {
+        buffer[i++] = get(lexer);
     }
     buffer[i] = '\0';
 
@@ -168,79 +202,78 @@ Token lex_keyword_from_pos(int* pos) {
     return make_token(type, buffer, VAL_NONE);
 }
 
-Token lex_keyword() {
-    return lex_keyword_from_pos(&lexer.position);
-}
-
-Token debug_return(Token token) {
-    printf("lexer: current token: %s", token_type_name(token.type));
-    if (token.text != NULL) {
-        printf("  (lexeme: %s)", token.text);
-    }
-    printf("\n");
-    return token;
-}
-
-Token get_token_from_pos(int* pos) {
-    skip_whitespaces_from_pos(pos);
-    char c = peek(pos);
+Token lex_next_token(Lexer* lexer) {
+    skip_whitespaces(lexer);
+    char c = peek(lexer);
 
     if (c == '\0') return make_token(TOK_EOF, NULL, VAL_NONE);
-    if (c == '=' && peek_ahead(pos, 1) == '=') 
+    
+    if (c == '=' && peek_ahead(lexer, 1) == '=')
     {
-        get(pos); get(pos);
+        get(lexer); get(lexer);
         return make_token(TOK_EQUAL, "==", VAL_NONE);
     }
 
-    if (c == '!' && peek_ahead(pos,1) == '=') 
+    if (c == '!' && peek_ahead(lexer, 1) == '=')
     {
-        get(pos); get(pos);
+        get(lexer); get(lexer);
         return make_token(TOK_NOT_EQUAL, "!=", VAL_NONE);
     }
 
     if (lookup_for_symbol(c) != TOK_ERROR)
-        return lex_symbol_from_pos(pos);
+        return lex_symbol(lexer);
 
     if (isdigit(c))
-        return lex_number_from_pos(pos);
+        return lex_number(lexer);
 
     if (isalpha(c) || c == '_')
-        return lex_keyword_from_pos(pos);
+        return lex_keyword(lexer);
 
-    get(pos);
+    get(lexer);
     return make_token(TOK_ERROR, NULL, VAL_NONE);
 }
 
-Token get_token() {
-    return debug_return(get_token_from_pos(&lexer.position));
-}
-
-Token peek_token(int steps) {
-    int saved_pos = lexer.position;
-    Token token = make_token(TOK_EOF, NULL, VAL_NONE);
-    
-    for (int i = 0; i < steps; i++) {
-        free_token(&token);
-        token = get_token_from_pos(&saved_pos);
-        if (token.type == TOK_EOF) break;
-    }
-    
-    return token;
-}
-
-char peek_ahead(int* pos, int offset)
+Tokens* tokenize(Lexer* lexer, const char* source, int debug)
 {
-    return lexer.source[*pos + offset];
+    init_lexer(lexer, source);
+
+    Tokens* tokens = create_tokens();
+    if (tokens == NULL) 
+        return NULL;
+
+    int generate_tokens = 1;
+    while (generate_tokens)
+    {
+        Token token = lex_next_token(lexer);
+        if(debug)
+        {
+            printf("lexer: current token: %s", token_type_name(token.type));
+            if (token.text != NULL) {
+                printf("  (lexeme: %s)", token.text);
+            }
+            printf("\n");
+        }
+
+        add_token(tokens, token);
+        if (token.type == TOK_EOF || token.type == TOK_ERROR)
+            generate_tokens = 0;
+    }    
+    return tokens;
 }
 
-char peek(int* pos)
+char peek_ahead(Lexer* lexer, int offset)
 {
-    return lexer.source[*pos];
+    return lexer->source[lexer->position + offset];
 }
 
-char get(int* pos)
+char peek(Lexer* lexer)
 {
-    return lexer.source[(*pos)++];
+    return lexer->source[lexer->position];
+}
+
+char get(Lexer* lexer)
+{
+    return lexer->source[lexer->position++];
 }
 
 const char* token_type_name(TokenType type) {
