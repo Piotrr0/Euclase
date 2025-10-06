@@ -7,6 +7,11 @@ typedef enum {
 } ASTFuncChild;
 
 typedef enum {
+    ASSIGN_TARGET = 0,
+    ASSIGN_VALUE = 1
+} ASTAssignChild;
+
+typedef enum {
     VAR_DECL_INITIALIZER = 0
 } ASTVarDeclChild;
 
