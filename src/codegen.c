@@ -430,7 +430,8 @@ LLVMValueRef codegen_unary_minus(ASTNode* node) {
 }
 
 LLVMValueRef codegen_expression(ASTNode *node) {
-    if (!node) return NULL;
+    if (node == NULL) 
+        return NULL;
 
     switch (node->type) {
         case AST_EXPRESSION:    return codegen_constant(node);
@@ -591,7 +592,8 @@ void codegen_assign(ASTNode* node)
         ASTNode* rhs = node->children[ASSIGN_VALUE];
 
         LLVMValueRef new_val = codegen_expression(rhs);
-        if(!new_val) return;
+        if(new_val == NULL) 
+            return;
 
         if(lhs->type == AST_IDENTIFIER) 
         {

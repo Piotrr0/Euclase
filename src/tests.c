@@ -159,7 +159,7 @@ const char* test_negative_numbers =
     "}";
 
 const char* test_for_loops =
-    "namespace main {}"
+    "namespace main {"
     "   int main() {"
     "       int x = 0;"
     "       int s = 1;"

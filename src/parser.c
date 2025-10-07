@@ -442,11 +442,9 @@ int is_func_call()
 
     Token* lparen_token = peek_token(1);
     if(lparen_token->type != TOK_LPAREN) {
-        free_token(lparen_token);
         return 0;
     }
 
-    free_token(lparen_token);
     return 1;
 }
 
@@ -475,6 +473,114 @@ int check_pointer_level(int offset)
     
     return offset - starting_offset;
 }
+
+ASTNode* parse_for_loop() {
+    if (!match(TOK_FOR))
+        return NULL;
+
+    if (!match(TOK_LPAREN))
+        return NULL;
+
+    ASTNode* node_for = new_node(AST_FOR);
+    if(node_for == NULL)
+        return NULL;
+
+    ASTNode* init = parse_loop_init();
+    if (init == NULL) {
+        free_ast(node_for);
+        return NULL;
+    }
+        
+    add_child (node_for, init);
+
+    ASTNode* condition = parse_loop_condition();
+    if (condition == NULL) {
+        free_ast(node_for);
+        return NULL;
+    }
+
+    add_child (node_for, condition);
+
+    ASTNode* update = parse_loop_update();
+    if(update == NULL) {
+        free_ast(node_for);
+        return NULL;
+    }
+
+    add_child(node_for, update);
+
+    if(!match(TOK_RPAREN)) {
+        free_ast(node_for);
+        return NULL;
+    }
+
+    ASTNode* body = parse_block();
+    if(body == NULL) {
+        free_ast(node_for);
+        return NULL;
+    }
+
+    add_child(node_for, body);
+    return node_for;
+}
+
+ASTNode* parse_loop_init() {
+    ASTNode* init = NULL;
+
+    if (match(TOK_SEMICOLON)) {
+        return new_node(AST_EXPRESSION);
+    }
+
+    if (is_type(current_token()->type))
+        init = parse_variable_declaration();
+    else if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION))
+        init = parse_assignment();
+
+    return init;
+}
+
+ASTNode* parse_loop_condition() {
+
+    ASTNode* condition = NULL;
+    if (!check(TOK_SEMICOLON))
+    {
+        condition = parse_expression();
+        if(condition == NULL)
+            return NULL;
+    }
+    else
+        condition = new_node(AST_EXPRESSION);
+    
+    if (!match(TOK_SEMICOLON))
+        return NULL;
+
+    return condition;
+}
+
+ASTNode* parse_loop_update()
+{
+    if (check(TOK_RPAREN))
+        return new_node(AST_EXPRESSION);
+
+    ASTNode* lhs = parse_expression();
+    if (lhs == NULL)
+        return new_node(AST_EXPRESSION);
+
+    if (!match(TOK_ASSIGNMENT))
+        return lhs;
+
+    ASTNode* rhs = parse_expression();
+    if (rhs == NULL) {
+        free_ast(lhs);
+        return new_node(AST_EXPRESSION);
+    }
+
+    ASTNode* update = new_node(AST_ASSIGN);
+    add_child(update, lhs);
+    add_child(update, rhs);
+    return update;
+}
+
 
 ASTNode* parse_condition() {
     if(!check(TOK_IF))
@@ -650,6 +756,9 @@ ASTNode* parse_statement() {
 
     if (check(TOK_IF))
         return parse_condition();
+
+    if (check(TOK_FOR))
+        return parse_for_loop();
 
     if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION))
         return parse_assignment();
@@ -896,6 +1005,7 @@ void print_ast(ASTNode* node, int level)
         case AST_EQUAL:         printf("Equal\n"); break;
         case AST_NOT_EQUAL:     printf("NotEqual\n"); break;
         case AST_IF:            printf("If\n"); break;
+        case AST_FOR:           printf("For\n"); break;
         case AST_LESS:          printf("Less\n"); break;
         case AST_GREATER:       printf("Greater\n"); break;
         case AST_CAST:
