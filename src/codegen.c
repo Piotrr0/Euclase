@@ -107,6 +107,42 @@ LLVMValueRef codegen_function_call(ASTNode* node)
     return LLVMBuildCall2(ctx.builder, func_type, func, args, args_count, "func_call");
 }
 
+void codegen_for_loop(ASTNode* node)
+{
+    if (node->type != AST_FOR)
+        return;
+
+    ASTNode* init_node = node->children[FOR_INIT];
+    ASTNode* cond_node = node->children[FOR_CONDITION];
+    ASTNode* update_node = node->children[FOR_UPDATE];
+    ASTNode* body_node = node->children[FOR_BLOCK];
+
+    if (init_node != NULL)
+        codegen_statement(init_node);
+
+    LLVMBasicBlockRef updBB  = LLVMAppendBasicBlock(current_function, "for_upd");
+    LLVMBasicBlockRef condBB = LLVMAppendBasicBlock(current_function, "for_cond");
+    LLVMBasicBlockRef bodyBB = LLVMAppendBasicBlock(current_function, "for_body");
+    LLVMBasicBlockRef afterBB= LLVMAppendBasicBlock(current_function, "for_after");
+
+    LLVMBuildBr(ctx.builder, condBB);
+    LLVMPositionBuilderAtEnd(ctx.builder, condBB);
+    LLVMValueRef cond_val = codegen_expression(cond_node);
+    LLVMBuildCondBr(ctx.builder, cond_val, bodyBB, afterBB);
+
+    LLVMPositionBuilderAtEnd(ctx.builder, bodyBB);
+    codegen_block(body_node);
+    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ctx.builder)) == NULL)
+        LLVMBuildBr(ctx.builder, updBB);
+
+    LLVMPositionBuilderAtEnd(ctx.builder, updBB);
+    if (update_node != NULL)
+        codegen_statement(update_node);
+    LLVMBuildBr(ctx.builder, condBB);
+
+    LLVMPositionBuilderAtEnd(ctx.builder, afterBB);
+}
+
 int does_type_kind_match(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind* out_kind)
 {
 
@@ -148,7 +184,7 @@ void codegen_condition(ASTNode* node)
 
     LLVMValueRef condition = codegen_expression(node_condition);
     LLVMBasicBlockRef thenBB  = LLVMAppendBasicBlock(current_function, "then");
-    LLVMBasicBlockRef mergeBB = LLVMAppendBasicBlock(current_function, "ifcont");
+    LLVMBasicBlockRef mergeBB = LLVMAppendBasicBlock(current_function, "if_cont");
 
     LLVMBasicBlockRef elseBB = NULL;
     if (node_else_block != NULL) {
@@ -467,6 +503,7 @@ void codegen_statement(ASTNode *node) {
         case AST_VAR_DECL:      codegen_variable_declaration(node); break;
         case AST_ASSIGN:        codegen_assign(node); break;
         case AST_IF:            codegen_condition(node); break;
+        case AST_FOR:           codegen_for_loop(node); break;
         default:                return;
     }
 }

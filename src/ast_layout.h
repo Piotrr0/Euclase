@@ -31,6 +31,13 @@ typedef enum {
 } ASTIfChild;
 
 typedef enum {
+    FOR_INIT = 0,
+    FOR_CONDITION = 1,
+    FOR_UPDATE = 2,
+    FOR_BLOCK = 3
+} ASTForChild;
+
+typedef enum {
     RETURN_VALUE = 0
 } ASTReturnChild;
 

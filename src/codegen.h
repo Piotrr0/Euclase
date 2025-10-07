@@ -57,6 +57,8 @@ LLVMValueRef codegen_variable_load(const char* name);
 LLVMValueRef codegen_cast(ASTNode* node);
 LLVMValueRef codegen_function_call(ASTNode* node);
 
+void codegen_for_loop(ASTNode* node);
+
 int does_type_kind_match(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind* out_kind);
 LLVMValueRef codegen_arithmetic_op(ASTNode* node);
 LLVMValueRef codegen_addition(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
