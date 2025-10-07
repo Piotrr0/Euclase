@@ -158,6 +158,21 @@ const char* test_negative_numbers =
     "   }"
     "}";
 
+const char* test_for_loops =
+    "namespace main {"
+    "   int main() {"
+    "       int x = 0;"
+    "       int s = 1;"
+    "       int e = 3;"
+    "       for(; s<e; s = s + 1) {"
+    "           for(int j = 0; j<3; j = j + 1) {"
+    "               x = x + 1;"
+    "           }"
+    "       }"
+    "       return x;"
+    "   }"
+    "}";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -172,6 +187,7 @@ void init_tests() {
     tests[9] = (TestCase){"conditions", test_conditions, 1};
     tests[10] =(TestCase){"less_greater", test_less_greater, 2};
     tests[11] =(TestCase){"negative", test_negative_numbers, 150};
+    tests[11] =(TestCase){"for_loop", test_for_loops, 6};
 }
 
 int run_test(const char* test) 

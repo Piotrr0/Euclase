@@ -26,6 +26,7 @@ typedef enum {
     AST_EQUAL,
     AST_NOT_EQUAL,
     AST_IF,
+    AST_FOR,
     AST_LESS,
     AST_GREATER
 } ASTNodeType;
@@ -83,6 +84,10 @@ ASTNode* parse_address_of();
 ASTNode* parse_function_call();
 ASTNode* parse_casting();
 TypeInfo parse_type();
+ASTNode* parse_for_loop();
+ASTNode* parse_loop_init();
+ASTNode* parse_loop_condition();
+ASTNode* parse_loop_update();
 ASTNode* parse_condition();
 ASTNode* parse_if();
 ASTNode* parse_else();
