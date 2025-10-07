@@ -18,10 +18,11 @@ Keyword keywords[] = {
     {"double",    TOK_DOUBLE},
     {"udouble",   TOK_UDOUBLE},
     {"char",      TOK_CHAR},
-    {"uchar",    TOK_UCHAR},
-    {"if",       TOK_IF},
-    {"else",     TOK_ELSE},
-    {NULL,       TOK_IDENTIFIER}
+    {"uchar",     TOK_UCHAR},
+    {"if",        TOK_IF},
+    {"else",      TOK_ELSE},
+    {"for",       TOK_FOR},
+    {NULL,        TOK_IDENTIFIER}
 };
 
 Symbol symbols[] = {
@@ -308,6 +309,7 @@ const char* token_type_name(TokenType type) {
         case TOK_UCHAR:         return "UCHAR";
         case TOK_IF:            return "IF";
         case TOK_ELSE:          return "ELSE";
+        case TOK_FOR:           return "FOR";
 
         case TOK_IDENTIFIER:    return "IDENTIFIER";
         case TOK_NUMBER_INT:    return "NUMBER_INT";
