@@ -173,6 +173,19 @@ const char* test_for_loops =
     "   }"
     "}";
 
+const char* test_while_loops = 
+    "namespace main {"
+    "   int main() {"
+    "       int a = 5;"
+    "       int s = 0;"
+    "       while (a > 1) {"
+    "           a = a - 1;"
+    "           s = s + 1;"
+    "       }"
+    "       return s;"
+    "   }"
+    "}";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -188,6 +201,7 @@ void init_tests() {
     tests[10] =(TestCase){"less_greater", test_less_greater, 2};
     tests[11] =(TestCase){"negative", test_negative_numbers, 150};
     tests[11] =(TestCase){"for_loop", test_for_loops, 6};
+    tests[12] =(TestCase){"while_loop", test_while_loops, 4};
 }
 
 int run_test(const char* test) 

@@ -107,6 +107,32 @@ LLVMValueRef codegen_function_call(ASTNode* node)
     return LLVMBuildCall2(ctx.builder, func_type, func, args, args_count, "func_call");
 }
 
+void codegen_while_loop(ASTNode* node) {
+    if (node->type != AST_WHILE)
+        return;
+
+    ASTNode* cond_node = node->children[WHILE_CONDITION];
+    ASTNode* body_node = node->children[WHILE_BLOCK];
+
+    LLVMBasicBlockRef condBB = LLVMAppendBasicBlock(current_function, "while_cond");
+    LLVMBasicBlockRef bodyBB = LLVMAppendBasicBlock(current_function, "while_body");
+    LLVMBasicBlockRef afterBB= LLVMAppendBasicBlock(current_function, "while_after");
+
+    LLVMBuildBr(ctx.builder, condBB);
+
+    LLVMPositionBuilderAtEnd(ctx.builder, condBB);
+    LLVMValueRef cond_val = codegen_expression(cond_node);
+    LLVMBuildCondBr(ctx.builder, cond_val, bodyBB, afterBB);
+
+    LLVMPositionBuilderAtEnd(ctx.builder, bodyBB);
+    codegen_block(body_node);
+
+    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ctx.builder)) == NULL)
+        LLVMBuildBr(ctx.builder, condBB);
+
+    LLVMPositionBuilderAtEnd(ctx.builder, afterBB);
+}
+
 void codegen_for_loop(ASTNode* node)
 {
     if (node->type != AST_FOR)
@@ -504,6 +530,7 @@ void codegen_statement(ASTNode *node) {
         case AST_ASSIGN:        codegen_assign(node); break;
         case AST_IF:            codegen_condition(node); break;
         case AST_FOR:           codegen_for_loop(node); break;
+        case AST_WHILE:         codegen_while_loop(node); break;
         default:                return;
     }
 }

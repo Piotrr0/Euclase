@@ -38,6 +38,11 @@ typedef enum {
 } ASTForChild;
 
 typedef enum {
+    WHILE_CONDITION = 0,
+    WHILE_BLOCK = 1
+} ASTWhileChild;
+
+typedef enum {
     RETURN_VALUE = 0
 } ASTReturnChild;
 
