@@ -102,7 +102,7 @@ ASTNode* parse_equality()
     if (left == NULL) 
         return NULL;
     
-    while (check(TOK_EQUAL) || check(TOK_NOT_EQUAL) || check(TOK_LESS) || check(TOK_GREATER))
+    while (check(TOK_EQUAL) || check(TOK_NOT_EQUAL) || check(TOK_LESS) || check(TOK_GREATER) || check(TOK_LESS_EQUALS) || check(TOK_GREATER_EQUALS))
     {
         TokenType op = current_token()->type;
         advance();
@@ -116,11 +116,13 @@ ASTNode* parse_equality()
         ASTNodeType node_type;
         switch(op) 
         {
-            case TOK_EQUAL:     node_type = AST_EQUAL; break;
-            case TOK_NOT_EQUAL: node_type = AST_NOT_EQUAL; break;
-            case TOK_LESS:      node_type = AST_LESS; break;
-            case TOK_GREATER:   node_type = AST_GREATER; break;
-            default:            node_type = AST_EXPRESSION; break;
+            case TOK_EQUAL:             node_type = AST_EQUAL; break;
+            case TOK_NOT_EQUAL:         node_type = AST_NOT_EQUAL; break;
+            case TOK_LESS:              node_type = AST_LESS; break;
+            case TOK_GREATER:           node_type = AST_GREATER; break;
+            case TOK_LESS_EQUALS:       node_type = AST_LESS_EQUAL; break;
+            case TOK_GREATER_EQUALS:    node_type = AST_GREATER_EQUAL; break;
+            default:                    node_type = AST_EXPRESSION; break;
         }
 
         ASTNode* binary_node = new_node(node_type);
@@ -1046,6 +1048,9 @@ void print_ast(ASTNode* node, int level)
         case AST_WHILE:         printf("While\n"); break;
         case AST_LESS:          printf("Less\n"); break;
         case AST_GREATER:       printf("Greater\n"); break;
+        case AST_LESS_EQUAL:    printf("Less Equal\n"); break;
+        case AST_GREATER_EQUAL: printf("Greater Equal\n"); break;
+
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->type_info.base_type));
             if (node->type_info.pointer_level > 0) {

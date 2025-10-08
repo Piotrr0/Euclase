@@ -12,6 +12,8 @@ typedef enum {
     TOK_AMPERSAND,
     TOK_LESS,
     TOK_GREATER,
+    TOK_LESS_EQUALS,
+    TOK_GREATER_EQUALS,
 
     TOK_VOID,
     TOK_INT,

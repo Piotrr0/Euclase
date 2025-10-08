@@ -186,6 +186,20 @@ const char* test_while_loops =
     "   }"
     "}";
 
+const char* test_less_greater_equals =
+    "namespace main {"
+    "   int main() {"
+    "       int c = 3;"
+    "       if(3 >= 3) {"
+    "           if(2 <= 2) {"
+    "               return 3"
+    "           }"
+    "           return 4;"
+    "       }"
+    "       return c;"
+    "   }"
+    "}";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -202,6 +216,7 @@ void init_tests() {
     tests[11] =(TestCase){"negative", test_negative_numbers, 150};
     tests[11] =(TestCase){"for_loop", test_for_loops, 6};
     tests[12] =(TestCase){"while_loop", test_while_loops, 4};
+    tests[13] =(TestCase){"less_greater_equals", test_less_greater_equals, 3};
 }
 
 int run_test(const char* test) 
