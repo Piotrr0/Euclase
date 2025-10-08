@@ -25,6 +25,7 @@ typedef enum {
     TOK_IF,
     TOK_ELSE,
     TOK_FOR,
+    TOK_WHILE,
 
     TOK_ADDITION,
     TOK_SUBTRACTION,

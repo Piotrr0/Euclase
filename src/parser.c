@@ -474,6 +474,40 @@ int check_pointer_level(int offset)
     return offset - starting_offset;
 }
 
+ASTNode* parse_while_loop() {
+    if (!match(TOK_WHILE))
+        return NULL;
+
+    if (!match(TOK_LPAREN))
+        return NULL;
+
+    ASTNode* while_node = new_node(AST_WHILE);
+    if (while_node == NULL)
+        return NULL;
+
+    ASTNode* condition = parse_expression();
+    if(condition == NULL) {
+        free_ast(while_node);
+        return NULL;
+    }
+
+    add_child(while_node, condition);
+
+    if (!match(TOK_RPAREN)) {
+        free_ast(while_node);
+        return NULL;
+    }
+
+    ASTNode* body = parse_block();
+    if(body == NULL) {
+        free_ast(while_node);
+        return NULL;
+    }
+
+    add_child(while_node, body);
+    return while_node;
+}
+
 ASTNode* parse_for_loop() {
     if (!match(TOK_FOR))
         return NULL;
@@ -760,6 +794,9 @@ ASTNode* parse_statement() {
     if (check(TOK_FOR))
         return parse_for_loop();
 
+    if (check(TOK_WHILE))
+        return parse_while_loop();
+
     if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION))
         return parse_assignment();
 
@@ -1006,6 +1043,7 @@ void print_ast(ASTNode* node, int level)
         case AST_NOT_EQUAL:     printf("NotEqual\n"); break;
         case AST_IF:            printf("If\n"); break;
         case AST_FOR:           printf("For\n"); break;
+        case AST_WHILE:         printf("While\n"); break;
         case AST_LESS:          printf("Less\n"); break;
         case AST_GREATER:       printf("Greater\n"); break;
         case AST_CAST:

@@ -22,6 +22,7 @@ Keyword keywords[] = {
     {"if",        TOK_IF},
     {"else",      TOK_ELSE},
     {"for",       TOK_FOR},
+    {"while",     TOK_WHILE},
     {NULL,        TOK_IDENTIFIER}
 };
 
@@ -310,6 +311,7 @@ const char* token_type_name(TokenType type) {
         case TOK_IF:            return "IF";
         case TOK_ELSE:          return "ELSE";
         case TOK_FOR:           return "FOR";
+        case TOK_WHILE:         return "WHILE";
 
         case TOK_IDENTIFIER:    return "IDENTIFIER";
         case TOK_NUMBER_INT:    return "NUMBER_INT";
