@@ -7,12 +7,16 @@
 #define HASH_TABLE_SIZE 32
 #define MAX_SCOPE_DEPTH 64
 
-typedef struct SymbolEntry {
+typedef struct SymbolData {
     char* name;
     TokenType base_type;
     int pointer_level;
     int is_global;
     LLVMValueRef alloc;
+} SymbolData;
+
+typedef struct SymbolEntry {
+    SymbolData symbol_data;
     struct SymbolEntry* next;
 } SymbolEntry;
 
@@ -32,9 +36,18 @@ typedef struct SymbolTable {
     int scope_count;
 } SymbolTable;
 
+size_t hash_string(const char* str);
+
 SymbolTable* init_symbol_table();
 HashTable* create_hash_table();
 Scope* create_scope(Scope* parent, int depth);
+SymbolEntry* create_symbol_entry(SymbolData data);
 
+void free_scope(Scope* scope);
+void free_symbol_entry(SymbolEntry* entry);
+void push_scope(SymbolTable* st);
+void pop_scope(SymbolTable* st);
+
+size_t hash_string(const char* str);
 
 #endif
