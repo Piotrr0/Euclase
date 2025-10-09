@@ -51,6 +51,9 @@ LLVMValueRef codegen_equality(ASTNode* node);
 LLVMValueRef codegen_compare(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type, int is_not_equal);
 LLVMValueRef codegen_less(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
 LLVMValueRef codegen_greater(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
+LLVMValueRef codegen_less_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
+LLVMValueRef codegen_greater_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
+
 
 LLVMValueRef codegen_constant(ASTNode* node);
 LLVMValueRef codegen_variable_load(const char* name);

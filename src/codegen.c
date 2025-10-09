@@ -271,7 +271,7 @@ LLVMValueRef codegen_equality(ASTNode* node) {
 }
 
 LLVMValueRef codegen_relational(ASTNode* node) {
-    if(node->type != AST_LESS && node->type != AST_GREATER)
+    if(node->type != AST_LESS && node->type != AST_GREATER && node->type != AST_GREATER_EQUAL && node->type != AST_LESS_EQUAL)
         return NULL;
 
     LLVMValueRef left  = codegen_expression(node->children[BIN_LEFT]);
@@ -281,7 +281,13 @@ LLVMValueRef codegen_relational(ASTNode* node) {
     if (!does_type_kind_match(left, right, &type))
         return NULL;
 
-    return node->type == AST_LESS ? codegen_less(left, right, type) : codegen_greater(left, right, type);
+    switch (node->type) {
+        case AST_LESS:          return codegen_less(left, right, type); break;
+        case AST_GREATER:       return codegen_greater(left, right, type); break;
+        case AST_LESS_EQUAL:    return codegen_less_equal(left, right, type); break;
+        case AST_GREATER_EQUAL: return codegen_greater_equal(left, right, type); break;
+        default: return NULL;
+    }
 }
 
 LLVMValueRef codegen_compare(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type, int is_not_equal)
@@ -304,6 +310,20 @@ LLVMValueRef codegen_less(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind ty
         return LLVMBuildFCmp(ctx.builder, LLVMRealOLT, left, right, "flt");
     else
         return LLVMBuildICmp(ctx.builder, LLVMIntSLT, left, right, "llt");
+}
+
+LLVMValueRef codegen_less_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type) {
+    if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        return LLVMBuildFCmp(ctx.builder, LLVMRealOLE, left, right, "fle");
+    else
+        return LLVMBuildICmp(ctx.builder, LLVMIntSLE, left, right, "lle");
+}
+
+LLVMValueRef codegen_greater_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type) {
+    if (type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
+        return LLVMBuildFCmp(ctx.builder, LLVMRealOGE, left, right, "fge");
+    else
+        return LLVMBuildICmp(ctx.builder, LLVMIntSGE, left, right, "lle");
 }
 
 LLVMValueRef codegen_arithmetic_op(ASTNode* node) {
@@ -514,7 +534,9 @@ LLVMValueRef codegen_expression(ASTNode *node) {
         case AST_NOT_EQUAL:     return codegen_equality(node);
 
         case AST_LESS:
-        case AST_GREATER:       return codegen_relational(node);
+        case AST_LESS_EQUAL:
+        case AST_GREATER:
+        case AST_GREATER_EQUAL: return codegen_relational(node);
 
         default:
             printf("Unhandled expression type: %d\n", node->type);

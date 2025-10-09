@@ -192,7 +192,7 @@ const char* test_less_greater_equals =
     "       int c = 3;"
     "       if(3 >= 3) {"
     "           if(2 <= 2) {"
-    "               return 3"
+    "               return 3;"
     "           }"
     "           return 4;"
     "       }"
