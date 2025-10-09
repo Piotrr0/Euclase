@@ -29,7 +29,9 @@ typedef enum {
     AST_FOR,
     AST_WHILE,
     AST_LESS,
-    AST_GREATER
+    AST_GREATER,
+    AST_LESS_EQUAL,
+    AST_GREATER_EQUAL
 } ASTNodeType;
 
 typedef struct TypeInfo {

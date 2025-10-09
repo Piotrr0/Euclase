@@ -222,6 +222,16 @@ Token lex_next_token(Lexer* lexer) {
         return make_token(TOK_NOT_EQUAL, "!=", VAL_NONE);
     }
 
+    if (c == '<' && peek_ahead(lexer, 1) == '=') {
+        get(lexer); get(lexer);
+        return make_token(TOK_LESS_EQUALS, "<=", VAL_NONE);
+    }
+
+    if (c == '>' && peek_ahead(lexer, 1) == '=') {
+        get(lexer); get(lexer);
+        return make_token(TOK_GREATER_EQUALS, ">=", VAL_NONE);
+    }
+
     if (lookup_for_symbol(c) != TOK_ERROR)
         return lex_symbol(lexer);
 
