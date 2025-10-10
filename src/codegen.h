@@ -8,19 +8,10 @@
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/Types.h>
 
+#include "lookup_table.h"
 #include "parser.h"
 
 #define MAX_VARIABLES 256
-
-typedef struct Variable {
-    const char* name;
-    int is_global;
-
-    TokenType base_type;
-    int pointer_level;
-
-    LLVMValueRef alloc;
-} Variable;
 
 typedef struct CodegenContext
 {
@@ -28,20 +19,15 @@ typedef struct CodegenContext
     LLVMModuleRef module;
     LLVMBuilderRef builder;
 
-    Variable variables[MAX_VARIABLES];
-    int var_count;
-
 } CodegenContext;
 
 extern CodegenContext ctx;
 extern LLVMValueRef current_function;
+extern SymbolTable* st;
 
 void init_codegen(CodegenContext* ctx, const char* module_name);
 void cleanup_codegen(CodegenContext* ctx);
 LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
-
-int add_variable(CodegenContext* ctx, const char* name, LLVMValueRef alloc, int is_global, TokenType base_type, int pointer_level);
-Variable* get_variable(CodegenContext* ctx, const char* name);
 
 void codegen_condition(ASTNode* node);
 void codegen_then_block(ASTNode* node_block, LLVMBasicBlockRef mergeBB);
@@ -53,7 +39,6 @@ LLVMValueRef codegen_less(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind ty
 LLVMValueRef codegen_greater(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
 LLVMValueRef codegen_less_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
 LLVMValueRef codegen_greater_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
-
 
 LLVMValueRef codegen_constant(ASTNode* node);
 LLVMValueRef codegen_variable_load(const char* name);

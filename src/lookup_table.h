@@ -48,6 +48,10 @@ void free_symbol_entry(SymbolEntry* entry);
 void push_scope(SymbolTable* st);
 void pop_scope(SymbolTable* st);
 
+int add_symbol(SymbolTable* st, SymbolData symbol_data);
+SymbolEntry* lookup_symbol_current_scope(SymbolTable* st, const char* name);
+SymbolEntry* lookup_symbol(SymbolTable* st, const char* name);
+
 size_t hash_string(const char* str);
 
 #endif
