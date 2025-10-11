@@ -200,6 +200,19 @@ const char* test_less_greater_equals =
     "   }"
     "}";
 
+const char* test_scopes = 
+    "namespace main {"
+    "   int main() {"
+    "       int c = 0;"
+    "       {"
+    "           int a = 5;"
+    "           int b = 3;"
+    "           c = a + b;"
+    "       }"
+    "       return c;"
+    "   }"
+    "}";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -217,6 +230,7 @@ void init_tests() {
     tests[11] =(TestCase){"for_loop", test_for_loops, 6};
     tests[12] =(TestCase){"while_loop", test_while_loops, 4};
     tests[13] =(TestCase){"less_greater_equals", test_less_greater_equals, 3};
+    tests[14] =(TestCase){"scopes", test_scopes, 8};
 }
 
 int run_test(const char* test) 
