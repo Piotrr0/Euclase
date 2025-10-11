@@ -799,6 +799,9 @@ ASTNode* parse_statement() {
     if (check(TOK_WHILE))
         return parse_while_loop();
 
+    if (check(TOK_LBRACE))
+        return parse_block();
+
     if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION))
         return parse_assignment();
 

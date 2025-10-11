@@ -533,6 +533,7 @@ void codegen_statement(ASTNode *node) {
         case AST_IF:            codegen_condition(node); break;
         case AST_FOR:           codegen_for_loop(node); break;
         case AST_WHILE:         codegen_while_loop(node); break;
+        case AST_BLOCK:         codegen_block(node); break;
         default:                return;
     }
 }
