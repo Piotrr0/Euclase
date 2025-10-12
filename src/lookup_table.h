@@ -2,6 +2,7 @@
 #define LOOKUP_TABLE_H
 
 #include "lexer.h"
+#include "parser.h"
 #include <llvm-c/Types.h>
 
 #define HASH_TABLE_SIZE 32
@@ -9,9 +10,8 @@
 
 typedef struct SymbolData {
     char* name;
-    TokenType base_type;
-    int pointer_level;
     int is_global;
+    TypeInfo info;
     LLVMValueRef alloc;
 } SymbolData;
 

@@ -574,10 +574,9 @@ void codegen_variable_declaration(ASTNode* node) {
 
     SymbolData data = {
         .name = node->name,
+        .is_global = 0,
+        .info = node->type_info,
         .alloc = alloca,
-        .base_type = node->type_info.base_type,
-        .pointer_level = node->type_info.pointer_level,
-        .is_global = 0
     };
     add_symbol(st, data);
 }
@@ -602,10 +601,9 @@ void codegen_global_variable_declaration(ASTNode *node) {
     
     SymbolData data = {
         .name = node->name,
+        .is_global = 1,
+        .info = node->type_info,
         .alloc = global_var,
-        .base_type = node->type_info.base_type,
-        .pointer_level = node->type_info.pointer_level,
-        .is_global = 1
     };
     add_symbol(st, data);
 }
@@ -628,7 +626,7 @@ LLVMValueRef codegen_dereference(ASTNode* node)
         if (entry == NULL || alloca == NULL) 
             return NULL;
 
-        if (entry->symbol_data.pointer_level <= 0) {
+        if (entry->symbol_data.info.pointer_level <= 0) {
             printf("Codegen: Cannot dereference non-pointer variable '%s'\n", ptr_expr->name);
             return NULL;
         }
@@ -639,8 +637,8 @@ LLVMValueRef codegen_dereference(ASTNode* node)
         else 
             ptr_val = LLVMBuildLoad2(ctx.builder, LLVMGetAllocatedType(alloca), alloca, "ptr_load");
         
-        LLVMTypeRef pointed_type = token_type_to_llvm_type(&ctx, data.base_type);
-        for (int j = 0; j < data.pointer_level - 1; j++) {
+        LLVMTypeRef pointed_type = token_type_to_llvm_type(&ctx, data.info.base_type);
+        for (int j = 0; j < data.info.pointer_level - 1; j++) {
             pointed_type = LLVMPointerType(pointed_type, 0);
         }
         
