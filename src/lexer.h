@@ -72,6 +72,9 @@ typedef struct Token {
     TokenType type;
     char* text;
     Value value;
+
+    int line;
+    int column;
 } Token;
 
 typedef struct Tokens {
@@ -83,6 +86,8 @@ typedef struct Tokens {
 typedef struct Lexer {
     const char* source;
     int position;
+    int line;
+    int column;
 } Lexer;
 
 typedef struct Keyword {
@@ -100,10 +105,10 @@ extern Symbol symbols[];
 extern Keyword keywords[];
 
 
-Token make_token(TokenType type, const char* text, ValueType vtype);
-Token make_int_token(int value);
-Token make_float_token(float value);
-Token make_double_token(double value);
+Token make_token(TokenType type, const char* text, ValueType vtype, int line, int column);
+Token make_int_token(int value, int line, int column);
+Token make_float_token(float value, int line, int column);
+Token make_double_token(double value, int line, int column);
 void free_token(Token* token);
 
 Tokens* create_tokens();
@@ -121,8 +126,12 @@ Token lex_symbol(Lexer* lexer);
 Token lex_number(Lexer* lexer);
 Token lex_keyword(Lexer* lexer);
 Token lex_next_token(Lexer* lexer);
-
 void skip_whitespaces(Lexer* lexer);
+void skip_whitespace_and_comments(Lexer* lexer);
+void skip_block_comment(Lexer* lexer);
+void skip_line_comment(Lexer* lexer);
+
+
 char peek(Lexer* lexer);
 char peek_ahead(Lexer* lexer, int offset);
 char get(Lexer* lexer);

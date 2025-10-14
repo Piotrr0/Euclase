@@ -9,14 +9,6 @@ typedef struct {
     int expected;
 } TestCase;
 
-extern const char* test_variables;
-extern const char* test_pointers;
-extern const char* test_pointer_function_param;
-extern const char* test_casting;
-extern const char* test_casting_pointer;
-extern const char* test_nested_functions;
-extern const char* test_arithmetic;
-
 extern TestCase tests[TESTS_BUFFER];
 
 void init_tests();
