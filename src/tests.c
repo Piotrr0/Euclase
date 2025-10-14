@@ -213,6 +213,18 @@ const char* test_scopes =
     "   }"
     "}";
 
+const char* test_comments =
+    "namespace main {\n"
+    "   int main() {\n"
+    "       int c = 2;\n"
+    "       // c = 5;\n"
+    "       /*\n"
+    "       c = 7;\n"
+    "       */\n"
+    "       return c;\n"
+    "   }\n"
+    "}\n";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -231,6 +243,7 @@ void init_tests() {
     tests[12] =(TestCase){"while_loop", test_while_loops, 4};
     tests[13] =(TestCase){"less_greater_equals", test_less_greater_equals, 3};
     tests[14] =(TestCase){"scopes", test_scopes, 8};
+    tests[15] =(TestCase){"comments", test_comments, 2};
 }
 
 int run_test(const char* test) 

@@ -47,13 +47,15 @@ Symbol symbols[] = {
     {'\0',TOK_EOF},
 };
 
-Token make_token(TokenType type, const char* text, ValueType vtype) {
+Token make_token(TokenType type, const char* text, ValueType vtype, int line, int column) {
     Token t;
     memset(&t, 0, sizeof(t));
     
     t.type = type;
     t.text = text ? strdup(text) : NULL;
     t.value.type = vtype;
+    t.line = line;
+    t.column = column;
     return t;
 }
 
@@ -64,20 +66,20 @@ void free_token(Token* token) {
     }
 }
 
-Token make_int_token(int value) {
-    Token t = make_token(TOK_NUMBER_INT, NULL, VAL_INT);
+Token make_int_token(int value, int line, int column) {
+    Token t = make_token(TOK_NUMBER_INT, NULL, VAL_INT, line, column);
     t.value.int_val = value;
     return t;
 }
 
-Token make_float_token(float value) {
-    Token t = make_token(TOK_NUMBER_FLOAT, NULL, VAL_FLOAT);
+Token make_float_token(float value, int line, int column) {
+    Token t = make_token(TOK_NUMBER_FLOAT, NULL, VAL_FLOAT, line, column);
     t.value.float_val = value;
     return t;
 }
 
-Token make_double_token(double value) {
-    Token t = make_token(TOK_NUMBER_DOUBLE, NULL, VAL_DOUBLE);
+Token make_double_token(double value, int line, int column) {
+    Token t = make_token(TOK_NUMBER_DOUBLE, NULL, VAL_DOUBLE, line, column);
     t.value.double_val = value;
     return t;
 }
@@ -150,6 +152,8 @@ TokenType lookup_for_keyword(const char* str) {
 void init_lexer(Lexer* lexer, const char* source) {
     lexer->source = source;
     lexer->position = 0;
+    lexer->line = 1;
+    lexer->column = 1;
 }
 
 void skip_whitespaces(Lexer* lexer) {
@@ -159,12 +163,18 @@ void skip_whitespaces(Lexer* lexer) {
 }
 
 Token lex_symbol(Lexer* lexer) {
+    const int line = lexer->line;
+    const int col = lexer->column;
+
     char c = get(lexer);
     TokenType type = lookup_for_symbol(c);
-    return make_token(type, NULL, VAL_NONE);
+    return make_token(type, NULL, VAL_NONE, line, col);
 }
 
 Token lex_number(Lexer* lexer) {
+    const int line = lexer->line;
+    const int col = lexer->column;
+
     char buffer[MAX_TOKEN_LEN];
     int i = 0;
     int has_dot = 0;
@@ -182,16 +192,19 @@ Token lex_number(Lexer* lexer) {
     if (suffix == 'f' || suffix == 'd') get(lexer);
 
     if (!has_dot && suffix != 'f' && suffix != 'd') 
-        return make_int_token(atoi(buffer));
+        return make_int_token(atoi(buffer), line, col);
     else if (suffix == 'f') 
-        return make_float_token((float)atof(buffer));
+        return make_float_token((float)atof(buffer), line, col);
     else if (suffix == 'd')
-        return make_double_token(atof(buffer));
+        return make_double_token(atof(buffer), line, col);
 
-    return make_token(TOK_ERROR, NULL, VAL_NONE);
+    return make_token(TOK_ERROR, NULL, VAL_NONE, line, col);
 }
 
 Token lex_keyword(Lexer* lexer) {
+    const int line = lexer->line;
+    const int col = lexer->column;
+
     char buffer[MAX_TOKEN_LEN];
     int i = 0;
 
@@ -201,35 +214,36 @@ Token lex_keyword(Lexer* lexer) {
     buffer[i] = '\0';
 
     TokenType type = lookup_for_keyword(buffer);
-    return make_token(type, buffer, VAL_NONE);
+    return make_token(type, buffer, VAL_NONE, line, col);
 }
 
 Token lex_next_token(Lexer* lexer) {
-    skip_whitespaces(lexer);
+    skip_whitespace_and_comments(lexer);
+    const int line = lexer->line;
+    const int col = lexer->column;
     char c = peek(lexer);
 
-    if (c == '\0') return make_token(TOK_EOF, NULL, VAL_NONE);
+    if (c == '\0') 
+        return make_token(TOK_EOF, NULL, VAL_NONE, line, col);
     
-    if (c == '=' && peek_ahead(lexer, 1) == '=')
-    {
+    if (c == '=' && peek_ahead(lexer, 1) == '=') {
         get(lexer); get(lexer);
-        return make_token(TOK_EQUAL, "==", VAL_NONE);
+        return make_token(TOK_EQUAL, "==", VAL_NONE, line, col);
     }
 
-    if (c == '!' && peek_ahead(lexer, 1) == '=')
-    {
+    if (c == '!' && peek_ahead(lexer, 1) == '=') {
         get(lexer); get(lexer);
-        return make_token(TOK_NOT_EQUAL, "!=", VAL_NONE);
+        return make_token(TOK_NOT_EQUAL, "!=", VAL_NONE, line, col);
     }
 
     if (c == '<' && peek_ahead(lexer, 1) == '=') {
         get(lexer); get(lexer);
-        return make_token(TOK_LESS_EQUALS, "<=", VAL_NONE);
+        return make_token(TOK_LESS_EQUALS, "<=", VAL_NONE, line, col);
     }
 
     if (c == '>' && peek_ahead(lexer, 1) == '=') {
         get(lexer); get(lexer);
-        return make_token(TOK_GREATER_EQUALS, ">=", VAL_NONE);
+        return make_token(TOK_GREATER_EQUALS, ">=", VAL_NONE, line, col);
     }
 
     if (lookup_for_symbol(c) != TOK_ERROR)
@@ -242,7 +256,47 @@ Token lex_next_token(Lexer* lexer) {
         return lex_keyword(lexer);
 
     get(lexer);
-    return make_token(TOK_ERROR, NULL, VAL_NONE);
+    return make_token(TOK_ERROR, NULL, VAL_NONE, line, col);
+}
+
+void skip_line_comment(Lexer* lexer) {
+    if (peek(lexer) == '/' && peek_ahead(lexer, 1) == '/')
+    {
+        while (peek(lexer) != '\n' && peek(lexer) != '\0') {
+            get(lexer);
+        }
+    }
+}
+
+void skip_block_comment(Lexer* lexer)
+{
+    if (peek(lexer) == '/' && peek_ahead(lexer, 1) == '*') {
+        get(lexer); get(lexer);
+
+        while (peek(lexer) != '\0')
+        {
+            if (peek(lexer) == '*' && peek_ahead(lexer, 1) != '\0' && peek_ahead(lexer, 1) == '/') {
+                get(lexer); get(lexer);
+                return;
+            }
+            get(lexer);
+        }
+    }
+}
+
+void skip_whitespace_and_comments(Lexer* lexer) {
+    int changed;
+    do {
+        changed = 0;
+        int before = lexer->position;
+
+        skip_whitespaces(lexer);
+        skip_line_comment(lexer);
+        skip_block_comment(lexer);
+
+        if (lexer->position != before)
+            changed = 1;
+    } while (changed);
 }
 
 Tokens* tokenize(Lexer* lexer, const char* source, int debug)
@@ -285,7 +339,15 @@ char peek(Lexer* lexer)
 
 char get(Lexer* lexer)
 {
-    return lexer->source[lexer->position++];
+    const char c = lexer->source[lexer->position++];
+    if (c == '\n') {
+        lexer->line++;
+        lexer->column = 1;
+    }
+    else
+        lexer->column++;
+
+    return c;
 }
 
 const char* token_type_name(TokenType type) {
