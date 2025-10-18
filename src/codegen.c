@@ -383,11 +383,24 @@ LLVMValueRef codegen_variable_load(const char* name) {
 
 LLVMValueRef codegen_constant(ASTNode* node)
 {
-    switch (node->value.type) {
-        case VAL_INT:       return LLVMConstInt(LLVMInt32TypeInContext(ctx.context), node->value.int_val, 0); break;
-        case VAL_FLOAT:     return LLVMConstReal(LLVMFloatTypeInContext(ctx.context), node->value.float_val); break;
-        case VAL_DOUBLE:    return LLVMConstReal(LLVMDoubleTypeInContext(ctx.context), node->value.double_val); break;
-        case VAL_NONE:      break;
+    if (node->name == NULL)
+        return NULL;
+
+    switch (node->type_info.base_type) {
+        case TOK_NUMBER_INT: {
+            int int_val = atoi(node->name);
+            return LLVMConstInt(LLVMInt32TypeInContext(ctx.context), int_val, 0);
+        }
+        case TOK_NUMBER_FLOAT: {
+            float float_val = strtof(node->name, NULL);
+            return LLVMConstReal(LLVMFloatTypeInContext(ctx.context), float_val);
+        }
+        case TOK_NUMBER_DOUBLE: {
+            double double_val = strtod(node->name, NULL);
+            return LLVMConstReal(LLVMDoubleTypeInContext(ctx.context), double_val);
+        }
+        default:
+            break;
     }
     return NULL;
 }

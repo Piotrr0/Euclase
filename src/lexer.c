@@ -47,41 +47,22 @@ Symbol symbols[] = {
     {'\0',TOK_EOF},
 };
 
-Token make_token(TokenType type, const char* text, ValueType vtype, int line, int column) {
+Token make_token(TokenType type, const char* lexeme, int line, int column) {
     Token t;
     memset(&t, 0, sizeof(t));
     
     t.type = type;
-    t.text = text ? strdup(text) : NULL;
-    t.value.type = vtype;
+    t.lexme = lexeme ? strdup(lexeme) : NULL;
     t.line = line;
     t.column = column;
     return t;
 }
 
 void free_token(Token* token) {
-    if (token && token->text) {
-        free(token->text);
-        token->text = NULL;
+    if (token && token->lexme) {
+        free(token->lexme);
+        token->lexme = NULL;
     }
-}
-
-Token make_int_token(int value, int line, int column) {
-    Token t = make_token(TOK_NUMBER_INT, NULL, VAL_INT, line, column);
-    t.value.int_val = value;
-    return t;
-}
-
-Token make_float_token(float value, int line, int column) {
-    Token t = make_token(TOK_NUMBER_FLOAT, NULL, VAL_FLOAT, line, column);
-    t.value.float_val = value;
-    return t;
-}
-
-Token make_double_token(double value, int line, int column) {
-    Token t = make_token(TOK_NUMBER_DOUBLE, NULL, VAL_DOUBLE, line, column);
-    t.value.double_val = value;
-    return t;
 }
 
 Tokens* create_tokens() 
@@ -168,7 +149,7 @@ Token lex_symbol(Lexer* lexer) {
 
     char c = get(lexer);
     TokenType type = lookup_for_symbol(c);
-    return make_token(type, NULL, VAL_NONE, line, col);
+    return make_token(type, NULL, line, col);
 }
 
 Token lex_number(Lexer* lexer) {
@@ -178,6 +159,8 @@ Token lex_number(Lexer* lexer) {
     char buffer[MAX_TOKEN_LEN];
     int i = 0;
     int has_dot = 0;
+    int has_suffix = 0;
+    char suffix = '\0';
 
     while ((isdigit(peek(lexer)) || peek(lexer) == '.') && i < MAX_TOKEN_LEN - 1) {
         if (peek(lexer) == '.') {
@@ -188,17 +171,30 @@ Token lex_number(Lexer* lexer) {
     }
     buffer[i] = '\0';
 
-    char suffix = peek(lexer);
-    if (suffix == 'f' || suffix == 'd') get(lexer);
+    char next = peek(lexer);
+    if (next == 'f' || next == 'F' || next == 'd' || next == 'D') {
+        suffix = next;
+        has_suffix = 1;
+        buffer[i++] = get(lexer);
+    }
 
-    if (!has_dot && suffix != 'f' && suffix != 'd') 
-        return make_int_token(atoi(buffer), line, col);
-    else if (suffix == 'f') 
-        return make_float_token((float)atof(buffer), line, col);
-    else if (suffix == 'd')
-        return make_double_token(atof(buffer), line, col);
+    buffer[i] = '\0';
 
-    return make_token(TOK_ERROR, NULL, VAL_NONE, line, col);
+    TokenType type;
+    
+    if (has_dot || has_suffix) {
+        if (suffix == 'f')
+            type = TOK_NUMBER_FLOAT;
+        else if (suffix == 'd')
+            type = TOK_NUMBER_DOUBLE;
+        else if (has_dot)
+            type = TOK_NUMBER_DOUBLE;
+    } 
+    else {
+        type = TOK_NUMBER_INT;
+    }
+
+    return make_token(type, buffer, line, col);
 }
 
 Token lex_keyword(Lexer* lexer) {
@@ -214,7 +210,7 @@ Token lex_keyword(Lexer* lexer) {
     buffer[i] = '\0';
 
     TokenType type = lookup_for_keyword(buffer);
-    return make_token(type, buffer, VAL_NONE, line, col);
+    return make_token(type, buffer, line, col);
 }
 
 Token lex_next_token(Lexer* lexer) {
@@ -224,26 +220,26 @@ Token lex_next_token(Lexer* lexer) {
     char c = peek(lexer);
 
     if (c == '\0') 
-        return make_token(TOK_EOF, NULL, VAL_NONE, line, col);
+        return make_token(TOK_EOF, NULL, line, col);
     
     if (c == '=' && peek_ahead(lexer, 1) == '=') {
         get(lexer); get(lexer);
-        return make_token(TOK_EQUAL, "==", VAL_NONE, line, col);
+        return make_token(TOK_EQUAL, "==", line, col);
     }
 
     if (c == '!' && peek_ahead(lexer, 1) == '=') {
         get(lexer); get(lexer);
-        return make_token(TOK_NOT_EQUAL, "!=", VAL_NONE, line, col);
+        return make_token(TOK_NOT_EQUAL, "!=", line, col);
     }
 
     if (c == '<' && peek_ahead(lexer, 1) == '=') {
         get(lexer); get(lexer);
-        return make_token(TOK_LESS_EQUALS, "<=", VAL_NONE, line, col);
+        return make_token(TOK_LESS_EQUALS, "<=", line, col);
     }
 
     if (c == '>' && peek_ahead(lexer, 1) == '=') {
         get(lexer); get(lexer);
-        return make_token(TOK_GREATER_EQUALS, ">=", VAL_NONE, line, col);
+        return make_token(TOK_GREATER_EQUALS, ">=", line, col);
     }
 
     if (lookup_for_symbol(c) != TOK_ERROR)
@@ -256,7 +252,7 @@ Token lex_next_token(Lexer* lexer) {
         return lex_keyword(lexer);
 
     get(lexer);
-    return make_token(TOK_ERROR, NULL, VAL_NONE, line, col);
+    return make_token(TOK_ERROR, NULL, line, col);
 }
 
 void skip_line_comment(Lexer* lexer) {
@@ -314,8 +310,8 @@ Tokens* tokenize(Lexer* lexer, const char* source, int debug)
         if(debug)
         {
             printf("lexer: current token: %s", token_type_name(token.type));
-            if (token.text != NULL) {
-                printf("  (lexeme: %s)", token.text);
+            if (token.lexme != NULL) {
+                printf("  (lexeme: %s)", token.lexme);
             }
             printf("\n");
         }

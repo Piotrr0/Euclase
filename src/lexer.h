@@ -50,28 +50,9 @@ typedef enum {
 
 } TokenType;
 
-typedef enum {
-    VAL_INT,
-    VAL_FLOAT,
-    VAL_DOUBLE,
-    VAL_NONE
-} ValueType;
-
-typedef struct Value
-{
-    ValueType type;
-    union {
-        int int_val;
-        float float_val;
-        double double_val;
-    };
-
-} Value;
-
 typedef struct Token {
     TokenType type;
-    char* text;
-    Value value;
+    char* lexme;
 
     int line;
     int column;
@@ -105,10 +86,7 @@ extern Symbol symbols[];
 extern Keyword keywords[];
 
 
-Token make_token(TokenType type, const char* text, ValueType vtype, int line, int column);
-Token make_int_token(int value, int line, int column);
-Token make_float_token(float value, int line, int column);
-Token make_double_token(double value, int line, int column);
+Token make_token(TokenType type, const char* lexeme, int line, int column);
 void free_token(Token* token);
 
 Tokens* create_tokens();

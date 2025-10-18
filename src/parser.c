@@ -13,8 +13,6 @@ ASTNode* new_node(ASTNodeType type) {
 
     node->type = type;
     node->name = NULL;
-    node->value.type = VAL_NONE;
-    node->value.int_val = 0;
     node->children = NULL;
     node->child_count = 0;
 
@@ -279,7 +277,8 @@ ASTNode* parse_primary_expression() {
     if (check(TOK_NUMBER_INT) || check(TOK_NUMBER_FLOAT) || check(TOK_NUMBER_DOUBLE))
     {
         ASTNode* node = new_node(AST_EXPRESSION);
-        node->value = current_token()->value;
+        node->name = strdup(current_token()->lexme);
+        node->type_info.base_type = current_token()->type;
         advance();
         return node;
     }
@@ -295,7 +294,7 @@ ASTNode* parse_identifier_expression()
         return NULL;
     }
 
-    node->name = strdup(current_token()->text);
+    node->name = strdup(current_token()->lexme);
     advance(); 
     return node;
 }
@@ -343,7 +342,7 @@ ASTNode* parse_function_call()
         return NULL;
     }
 
-    char* name = strdup(current_token()->text);
+    char* name = strdup(current_token()->lexme);
     advance();
 
     if(!match(TOK_LPAREN)) {
@@ -733,7 +732,7 @@ ASTNode* parse_variable_declaration() {
     if(node == NULL)
         return NULL;
 
-    node->name = strdup(current_token()->text);
+    node->name = strdup(current_token()->lexme);
     node->type_info = type;
     advance();
 
@@ -749,7 +748,6 @@ ASTNode* parse_variable_declaration() {
     }
     
     add_child(node, expr);
-    node->value.type = expr->value.type;
 
     if (!match(TOK_SEMICOLON)) {
         printf("Parse error: expected ';'\n");
@@ -875,7 +873,7 @@ ASTNode* parse_parameters() {
             free_ast(param_list);
             return NULL;
         }
-        char* param_name = strdup(current_token()->text);
+        char* param_name = strdup(current_token()->lexme);
         advance();
 
         ASTNode* param_node = new_node(AST_VAR_DECL);
@@ -917,7 +915,7 @@ ASTNode* parse_function()
         return NULL;
 
     func->type_info = return_type;
-    func->name = strdup(current_token()->text);
+    func->name = strdup(current_token()->lexme);
     advance();
 
     ASTNode* params = parse_parameters();
@@ -946,7 +944,7 @@ ASTNode* parse_namespace(ASTNodeType type)
         return NULL;
     }
 
-    char* namespace_name = strdup(current_token()->text);
+    char* namespace_name = strdup(current_token()->lexme);
     if (!match(TOK_IDENTIFIER)) {
         free(namespace_name);
         printf("Parse error: expected namespace name\n");
@@ -1053,7 +1051,6 @@ void print_ast(ASTNode* node, int level)
         case AST_GREATER:       printf("Greater\n"); break;
         case AST_LESS_EQUAL:    printf("Less Equal\n"); break;
         case AST_GREATER_EQUAL: printf("Greater Equal\n"); break;
-
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->type_info.base_type));
             if (node->type_info.pointer_level > 0) {
@@ -1063,11 +1060,13 @@ void print_ast(ASTNode* node, int level)
             printf(")\n");
             break;
         case AST_EXPRESSION:
-            switch (node->value.type) {
-                case VAL_INT:       printf("Number(int: %d)\n", node->value.int_val); break;
-                case VAL_FLOAT:     printf("Number(float: %f)\n", node->value.float_val); break;
-                case VAL_DOUBLE:    printf("Number(double: %lf)\n", node->value.double_val); break;
-                case VAL_NONE:      printf("Expression()\n");   break;
+            if (node->name != NULL) {
+                switch (node->type_info.base_type) {
+                    case TOK_NUMBER_INT:    printf("Number(int: %s)\n", node->name); break;
+                    case TOK_NUMBER_FLOAT:  printf("Number(float: %s)\n", node->name); break;
+                    case TOK_NUMBER_DOUBLE: printf("Number(double: %s)\n", node->name); break;
+                    default:                printf("Number(%s)\n", node->name); break;
+                }
             }
             break;
         default:                printf("UnknownNodeType(%d)\n", node->type); break;
