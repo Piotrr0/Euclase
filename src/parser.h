@@ -44,7 +44,6 @@ typedef struct ASTNode {
     char* name;
 
     TypeInfo type_info;
-    Value value;
 
     struct ASTNode** children;
     int child_count;
