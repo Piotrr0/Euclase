@@ -69,8 +69,10 @@ void add_child(ASTNode* parent, ASTNode* child);
 void free_ast(ASTNode* node);
 
 int parse_pointer_level();
+int is_compound_token(TokenType type);
 
 
+ASTNode* parse_compound_operators();
 ASTNode* parse_expression();
 ASTNode* parse_equality();
 ASTNode* parse_additive();

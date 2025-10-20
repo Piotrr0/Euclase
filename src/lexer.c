@@ -242,6 +242,31 @@ Token lex_next_token(Lexer* lexer) {
         return make_token(TOK_GREATER_EQUALS, ">=", line, col);
     }
 
+    if (c == '+' && peek_ahead(lexer, 1) == '=' ) {
+        get(lexer); get(lexer);
+        return make_token(TOK_ASSIGNMENT_ADDITION, "+=", line, col);
+    }
+
+    if (c == '-' && peek_ahead(lexer, 1) == '=' ) {
+        get(lexer); get(lexer);
+        return make_token(TOK_ASSIGNMENT_SUBTRACTION, "-=", line, col);
+    }
+
+    if (c == '*' && peek_ahead(lexer, 1) == '=' ) {
+        get(lexer); get(lexer);
+        return make_token(TOK_ASSIGNMENT_MULTIPLICATION, "*=", line, col);
+    }
+
+    if (c == '/' && peek_ahead(lexer, 1) == '=' ) {
+        get(lexer); get(lexer);
+        return make_token(TOK_ASSIGNMENT_DIVISION, "/=", line, col);
+    }
+
+    if (c == '%' && peek_ahead(lexer, 1) == '=' ) {
+        get(lexer); get(lexer);
+        return make_token(TOK_ASSIGNMENT_MODULO, "%=", line, col);
+    }
+
     if (lookup_for_symbol(c) != TOK_ERROR)
         return lex_symbol(lexer);
 
@@ -366,6 +391,12 @@ const char* token_type_name(TokenType type) {
         case TOK_MODULO:        return "MODULO";
         case TOK_EQUAL:         return "EQUAL";
         case TOK_NOT_EQUAL:     return "NOT_EQUAL";
+
+        case TOK_ASSIGNMENT_ADDITION:         return "ASSIGNMENT_ADDITION";
+        case TOK_ASSIGNMENT_SUBTRACTION:      return "ASSIGNMENT_SUBTRACTION";
+        case TOK_ASSIGNMENT_MULTIPLICATION:   return "ASSIGNMENT_MULTIPLICATION";
+        case TOK_ASSIGNMENT_DIVISION:         return "ASSIGNMENT_DIVISION";
+        case TOK_ASSIGNMENT_MODULO:           return "ASSIGNMENT_MODULO";
 
         case TOK_VOID:          return "VOID";
         case TOK_INT:           return "INT";

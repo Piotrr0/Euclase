@@ -89,6 +89,74 @@ int parse_pointer_level() {
     return level;
 }
 
+ASTNode* parse_compound_operators() {
+    ASTNode* lhs = parse_expression();
+    if (lhs == NULL)
+        return NULL;
+
+    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_DEREFERENCE) {
+        free_ast(lhs);
+        return NULL;
+    }
+
+    TokenType op = current_token()->type;
+    ASTNodeType binary_op;
+    
+    switch(op) {
+        case TOK_ASSIGNMENT_ADDITION:       binary_op = AST_ADDITION; break;
+        case TOK_ASSIGNMENT_SUBTRACTION:    binary_op = AST_SUBTRACTION; break;
+        case TOK_ASSIGNMENT_MULTIPLICATION: binary_op = AST_MULTIPLICATION; break;
+        case TOK_ASSIGNMENT_DIVISION:       binary_op = AST_DIVISION; break;
+        case TOK_ASSIGNMENT_MODULO:         binary_op = AST_MODULO; break;
+        default: free_ast(lhs); return NULL;
+    }
+    
+    advance();
+    ASTNode* rhs = parse_expression();
+    if (rhs == NULL) {
+        free_ast(lhs);
+        return NULL;
+    }
+
+    if (!match(TOK_SEMICOLON)) {
+        free_ast(lhs);
+        free_ast(rhs);
+        return NULL;
+    }
+
+    ASTNode* binary_node = new_node(binary_op);
+    if (binary_node == NULL) {
+        free_ast(lhs);
+        free_ast(rhs);
+        return NULL;
+    }
+    
+    ASTNode* lhs_copy = new_node(AST_IDENTIFIER);
+    if (lhs_copy == NULL) {
+        free_ast(lhs);
+        free_ast(rhs);
+        free_ast(binary_node);
+        return NULL;
+    }
+    lhs_copy->name = strdup(lhs->name);
+    lhs_copy->type_info = lhs->type_info;
+    
+    add_child(binary_node, lhs_copy);
+    add_child(binary_node, rhs);
+
+    ASTNode* assign_node = new_node(AST_ASSIGN);
+    if (assign_node == NULL) {
+        free_ast(lhs);
+        free_ast(binary_node);
+        return NULL;
+    }
+    
+    add_child(assign_node, lhs);
+    add_child(assign_node, binary_node);
+
+    return assign_node;
+}
+
 ASTNode* parse_expression() 
 {
     return parse_equality();
@@ -683,7 +751,24 @@ ASTNode* parse_else() {
     return node_else;
 }
 
+int is_compound_token(TokenType type) {
+    if (type == TOK_ASSIGNMENT_ADDITION ||
+        type == TOK_ASSIGNMENT_SUBTRACTION ||
+        type == TOK_ASSIGNMENT_MULTIPLICATION ||
+        type == TOK_ASSIGNMENT_DIVISION ||
+        type == TOK_ASSIGNMENT_MODULO)
+            return 1;
+    return 0;
+}
+
 ASTNode* parse_assignment() {
+    if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION)) {
+        Token* next = peek_token(1);
+        if (is_compound_token(next->type)) {
+            return parse_compound_operators();
+        }
+    }
+
     ASTNode* lhs = parse_expression();
     if (lhs == NULL) {
         printf("Parse error: expected lvalue\n");
