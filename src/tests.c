@@ -225,6 +225,23 @@ const char* test_comments =
     "   }\n"
     "}\n";
 
+const char* test_compound_operators = 
+    "namespace main {"
+    "   int main() {"
+    "       int a = 1;"
+    "       int b = 2;"
+    "       int c = 3;"
+    "       int d = 4;"
+    "       int e = 5;"
+    "       a += b;"
+    "       b -= c;"
+    "       c *= d;"
+    "       d /= e;"
+    "       e %= a;"
+    "       return a + b + c + d + e;"
+    "   }"
+    "}";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -244,6 +261,7 @@ void init_tests() {
     tests[13] =(TestCase){"less_greater_equals", test_less_greater_equals, 3};
     tests[14] =(TestCase){"scopes", test_scopes, 8};
     tests[15] =(TestCase){"comments", test_comments, 2};
+    tests[16] =(TestCase){"compound_operators", test_compound_operators, 16};
 }
 
 int run_test(const char* test) 
