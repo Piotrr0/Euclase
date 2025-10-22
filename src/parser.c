@@ -306,10 +306,29 @@ ASTNode* parse_unary()
 
 ASTNode* parse_postfix()
 {
+    ASTNode* node = NULL;
     if (is_func_call())
-        return parse_function_call();
+        node = parse_function_call();
+    else
+         node = parse_primary();
+
+    while (check(TOK_DOT)) {
+        advance();
+        
+        if (!check(TOK_IDENTIFIER)) {
+            free_ast(node);
+            return NULL;
+        }
+        
+        ASTNode* member_access = new_node(AST_MEMBER_ACCESS);
+        member_access->name = strdup(current_token()->lexme);
+        advance();
+        
+        add_child(member_access, node);
+        node = member_access;
+    }
     
-    return parse_primary();
+    return node;
 }
 
 ASTNode* parse_primary()
@@ -775,7 +794,7 @@ ASTNode* parse_assignment() {
         return NULL;
     }
 
-    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_DEREFERENCE) {
+    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_DEREFERENCE && lhs->type != AST_MEMBER_ACCESS) {
         printf("Parse error: invalid lvalue\n");
         free_ast(lhs);
         return NULL;
@@ -821,25 +840,83 @@ ASTNode* parse_variable_declaration() {
     node->type_info = type;
     advance();
 
-    if (!match(TOK_ASSIGNMENT)) {
-        printf("Parse error: expected initialization");
-        return NULL;        
-    }
-
-    ASTNode* expr = parse_expression();
-    if(expr == NULL) {
-        free_ast(node);
-        return NULL;
+    if (match(TOK_ASSIGNMENT)) {
+        ASTNode* expr = parse_expression();
+        if(expr == NULL) {
+            free_ast(node);
+            return NULL;
+        }
+        add_child(node, expr);
     }
     
-    add_child(node, expr);
-
     if (!match(TOK_SEMICOLON)) {
         printf("Parse error: expected ';'\n");
         return NULL;
     }
 
     return node;
+}
+
+ASTNode* parse_struct_member() {
+    TypeInfo type = parse_type();
+
+    if (current_token()->type != TOK_IDENTIFIER) {
+        return NULL;
+    }
+
+    ASTNode* member = new_node(AST_VAR_DECL);
+    if(member == NULL)
+        return NULL;
+
+    member->name = strdup(current_token()->lexme);
+    member->type_info = type;
+    advance();
+
+    if (!match(TOK_SEMICOLON)) {
+        free_ast(member);
+        return NULL;
+    }
+
+    return member;
+}
+
+ASTNode* parse_struct_declaration() {
+    if (!match(TOK_STRUCT))
+        return NULL;
+
+    if (!check(TOK_IDENTIFIER))
+        return NULL;
+
+    ASTNode* struct_node = new_node(AST_STRUCT);
+    if(struct_node == NULL)
+        return NULL;
+        
+    struct_node->name = strdup(current_token()->lexme);
+    advance();
+    
+    if (!match(TOK_LBRACE)) {
+        free_ast(struct_node);
+        return NULL;
+    }
+
+    while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
+        if (is_type(current_token()->type))
+        {
+            ASTNode* member = parse_struct_member();
+            if(member != NULL)
+                add_child(struct_node, member);
+        }
+        else
+            advance();
+    }
+
+    if (!match(TOK_RBRACE))
+        return NULL;
+
+    if (!match(TOK_SEMICOLON))
+        return NULL;
+
+    return struct_node;
 }
 
 ASTNode* parse_return() {
@@ -890,6 +967,9 @@ ASTNode* parse_statement() {
 
     if (is_type(current_token()->type))
         return parse_variable_declaration();
+
+    if (check(TOK_STRUCT))
+        return parse_struct_declaration();
 
     printf("Parse error: unknown statement\n");
     advance();
@@ -1061,6 +1141,11 @@ ASTNode* parse_program() {
             if(func != NULL)
                 add_child(program, func);
         }
+        else if (check(TOK_STRUCT)) {
+            ASTNode* struct_node = parse_struct_declaration();
+            if(struct_node != NULL)
+                add_child(program, struct_node);
+        }
         else if (is_type(current_token()->type))
         {
             ASTNode* var_decl = parse_variable_declaration();
@@ -1136,6 +1221,8 @@ void print_ast(ASTNode* node, int level)
         case AST_GREATER:       printf("Greater\n"); break;
         case AST_LESS_EQUAL:    printf("Less Equal\n"); break;
         case AST_GREATER_EQUAL: printf("Greater Equal\n"); break;
+        case AST_STRUCT:        printf("Struct %s\n", node->name); break;
+        case AST_MEMBER_ACCESS: printf("MemberAccess(.%s)\n", node->name); break;
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->type_info.base_type));
             if (node->type_info.pointer_level > 0) {

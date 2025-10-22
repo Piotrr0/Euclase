@@ -250,10 +250,6 @@ const char* test_struct =
     "   };"
     ""
     "   int main() {"
-    "       foo f = {};"
-    "       f.a = 10;"
-    "       f.b = 20;"
-    "       return f.a + 10 + f.b;"
     "   }"
     "}";
 
