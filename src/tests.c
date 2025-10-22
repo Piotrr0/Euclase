@@ -242,6 +242,21 @@ const char* test_compound_operators =
     "   }"
     "}";
 
+const char* test_struct = 
+    "namespace main {"
+    "   struct foo {"
+    "       int a;"
+    "       int b;"
+    "   };"
+    ""
+    "   int main() {"
+    "       foo f = {};"
+    "       f.a = 10;"
+    "       f.b = 20;"
+    "       return f.a + 10 + f.b;"
+    "   }"
+    "}";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -262,6 +277,7 @@ void init_tests() {
     tests[14] =(TestCase){"scopes", test_scopes, 8};
     tests[15] =(TestCase){"comments", test_comments, 2};
     tests[16] =(TestCase){"compound_operators", test_compound_operators, 16};
+    tests[17] =(TestCase){"struct", test_struct, 40};
 }
 
 int run_test(const char* test) 
