@@ -11,8 +11,6 @@
 #include "lookup_table.h"
 #include "parser.h"
 
-#define MAX_VARIABLES 256
-
 typedef struct CodegenContext
 {
     LLVMContextRef context;
@@ -28,6 +26,8 @@ extern SymbolTable* st;
 void init_codegen(CodegenContext* ctx, const char* module_name);
 void cleanup_codegen(CodegenContext* ctx);
 LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
+
+void codegen_struct_declaration(ASTNode* node);
 
 void codegen_condition(ASTNode* node);
 void codegen_then_block(ASTNode* node_block, LLVMBasicBlockRef mergeBB);

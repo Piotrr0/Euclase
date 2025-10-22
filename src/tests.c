@@ -250,6 +250,7 @@ const char* test_struct =
     "   };"
     ""
     "   int main() {"
+    "       return 40;"
     "   }"
     "}";
 
