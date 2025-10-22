@@ -23,6 +23,7 @@ Keyword keywords[] = {
     {"else",      TOK_ELSE},
     {"for",       TOK_FOR},
     {"while",     TOK_WHILE},
+    {"struct",    TOK_STRUCT},
     {NULL,        TOK_IDENTIFIER}
 };
 
@@ -32,6 +33,7 @@ Symbol symbols[] = {
     {'(', TOK_LPAREN},
     {')', TOK_RPAREN},
     {',', TOK_COMMA},
+    {'.', TOK_DOT},
     {';', TOK_SEMICOLON},
     {'=', TOK_ASSIGNMENT},
     {'<', TOK_LESS},
@@ -378,6 +380,7 @@ const char* token_type_name(TokenType type) {
         case TOK_LPAREN:        return "LPAREN";
         case TOK_RPAREN:        return "RPAREN";
         case TOK_COMMA:         return "COMMA";
+        case TOK_DOT:           return "DOT";
         case TOK_SEMICOLON:     return "SEMICOLON";
         case TOK_ASSIGNMENT:    return "ASSIGNMENT";
         case TOK_LESS:          return "LESS";
@@ -411,6 +414,7 @@ const char* token_type_name(TokenType type) {
         case TOK_ELSE:          return "ELSE";
         case TOK_FOR:           return "FOR";
         case TOK_WHILE:         return "WHILE";
+        case TOK_STRUCT:        return "STRUCT";
 
         case TOK_IDENTIFIER:    return "IDENTIFIER";
         case TOK_NUMBER_INT:    return "NUMBER_INT";

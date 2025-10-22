@@ -621,6 +621,26 @@ void codegen_global_variable_declaration(ASTNode *node) {
     add_symbol(st, data);
 }
 
+void codegen_struct_declaration(ASTNode* node) {
+    if (node->type != AST_STRUCT)
+        return;
+    
+    LLVMTypeRef structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), node->name);
+    LLVMTypeRef* field_types = malloc(sizeof(LLVMTypeRef) * node->child_count);
+    for (int i = 0; i<node->child_count; i++)
+    {
+        ASTNode* field = node->children[i];
+        LLVMTypeRef field_type = token_type_to_llvm_type(&ctx, field->type_info.base_type);
+        for (int j = 0; j < field->type_info.pointer_level; j++)
+            field_type = LLVMPointerType(field_type, 0);
+
+        field_types[i++] = field_type;
+    }
+
+    LLVMStructSetBody(structType, field_types, node->child_count, 0);
+    free(field_types);
+}
+
 LLVMValueRef codegen_dereference(ASTNode* node)
 {
     if (node->type != AST_DEREFERENCE)
@@ -814,6 +834,7 @@ void codegen_program(ASTNode* node)
         ASTNode* child = node->children[i];
         switch (child->type) {
             case AST_FUNCTION:      codegen_function(child); break;
+            case AST_STRUCT:        codegen_struct_declaration(child); break;
             case AST_VAR_DECL:      codegen_global_variable_declaration(child); break;
             default: break;
         }

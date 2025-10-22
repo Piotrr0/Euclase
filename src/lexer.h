@@ -7,6 +7,7 @@ typedef enum {
     TOK_LPAREN, 
     TOK_RPAREN,
     TOK_COMMA,
+    TOK_DOT,
     TOK_SEMICOLON,
     TOK_ASSIGNMENT,
     TOK_AMPERSAND,
@@ -28,6 +29,7 @@ typedef enum {
     TOK_ELSE,
     TOK_FOR,
     TOK_WHILE,
+    TOK_STRUCT,
 
     TOK_ADDITION,
     TOK_SUBTRACTION,

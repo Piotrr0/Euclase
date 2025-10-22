@@ -7,31 +7,38 @@ typedef enum {
     AST_PROGRAM,
     AST_FUNCTION,
     AST_BLOCK,
+    AST_PARAM_LIST,
+    
     AST_RETURN,
-    AST_IDENTIFIER,
-    AST_EXPRESSION,
     AST_VAR_DECL,
     AST_ASSIGN,
+    AST_IF,
+    AST_FOR,
+    AST_WHILE,
+    
+    AST_IDENTIFIER,
+    AST_EXPRESSION,
+    AST_FUNC_CALL,
     AST_DEREFERENCE,
     AST_ADDRESS_OF,
-    AST_UNARY_MINUS,
     AST_CAST,
-    AST_PARAM_LIST,
-    AST_FUNC_CALL,
+    
+    AST_UNARY_MINUS,
     AST_ADDITION,
     AST_SUBTRACTION,
     AST_MULTIPLICATION,
     AST_DIVISION,
     AST_MODULO,
+    
     AST_EQUAL,
     AST_NOT_EQUAL,
-    AST_IF,
-    AST_FOR,
-    AST_WHILE,
     AST_LESS,
     AST_GREATER,
     AST_LESS_EQUAL,
-    AST_GREATER_EQUAL
+    AST_GREATER_EQUAL,
+    
+    AST_STRUCT,
+    AST_MEMBER_ACCESS
 } ASTNodeType;
 
 typedef struct TypeInfo {
@@ -98,6 +105,8 @@ ASTNode* parse_if();
 ASTNode* parse_else();
 ASTNode* parse_assignment();
 ASTNode* parse_variable_declaration();
+ASTNode* parse_struct_declaration();
+ASTNode* parse_struct_member();
 ASTNode* parse_return();
 ASTNode* parse_statement();
 ASTNode* parse_block();
