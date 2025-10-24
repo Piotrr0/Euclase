@@ -254,6 +254,16 @@ const char* test_struct =
     "   }"
     "}";
 
+const char* test_string_literal = 
+    "namespace main {"
+    "   int main() {"
+    "       char a = 'h';"
+    "       char* b = \"hello world\";"
+
+    "       return 5;"
+    "   }"
+    "}";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -275,6 +285,7 @@ void init_tests() {
     tests[15] =(TestCase){"comments", test_comments, 2};
     tests[16] =(TestCase){"compound_operators", test_compound_operators, 16};
     tests[17] =(TestCase){"struct", test_struct, 40};
+    tests[18] =(TestCase){"string_literal", test_string_literal, 5};
 }
 
 int run_test(const char* test) 

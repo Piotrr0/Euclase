@@ -405,6 +405,21 @@ LLVMValueRef codegen_constant(ASTNode* node)
     return NULL;
 }
 
+LLVMValueRef codegen_string_literal(ASTNode* node) {
+    if (node->type != AST_STRING_LITERAL)
+        return NULL;
+
+    return LLVMBuildGlobalStringPtr(ctx.builder, node->name, "str");;
+}
+
+LLVMValueRef codegen_char_literal(ASTNode* node) {
+    if (node->type != AST_CHAR_LITERAL || node->name == NULL)
+        return NULL;
+
+    char char_val = node->name[0];
+    return LLVMConstInt(LLVMInt8TypeInContext(ctx.context), char_val, 0);
+}
+
 LLVMValueRef codegen_cast(ASTNode* node) 
 {
     if(node->type != AST_CAST || node->child_count == 0)
@@ -512,6 +527,8 @@ LLVMValueRef codegen_expression(ASTNode *node) {
         case AST_EXPRESSION:    return codegen_constant(node);
         case AST_IDENTIFIER:    return codegen_variable_load(node->name);
         case AST_FUNC_CALL:     return codegen_function_call(node);
+        case AST_STRING_LITERAL:return codegen_string_literal(node);
+        case AST_CHAR_LITERAL:  return codegen_char_literal(node);
         case AST_ADDRESS_OF:    return codegen_address_of(node);
         case AST_DEREFERENCE:   return codegen_dereference(node);
         case AST_CAST:          return codegen_cast(node);

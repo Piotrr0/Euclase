@@ -360,18 +360,65 @@ ASTNode* parse_primary_expression() {
     ASTNode* paren = parse_parens();
     if(paren != NULL)
         return paren;
-    
-    if (check(TOK_NUMBER_INT) || check(TOK_NUMBER_FLOAT) || check(TOK_NUMBER_DOUBLE))
+
+    switch (current_token()->type)
     {
-        ASTNode* node = new_node(AST_EXPRESSION);
-        node->name = strdup(current_token()->lexme);
-        node->type_info.base_type = current_token()->type;
-        advance();
-        return node;
+        case TOK_CHAR_LITERAL:      return parse_char_literal();
+        case TOK_STRING_LITERAL:    return parse_string_literal();
+        case TOK_NUMBER_INT:
+        case TOK_NUMBER_FLOAT:
+        case TOK_NUMBER_DOUBLE:     return parse_number_literal();
+        default: printf("Parse error: expected primary expression\n");
     }
-    
-    printf("Parse error: expected primary expression\n");
     return NULL;
+}
+
+ASTNode* parse_number_literal() {
+    if (!(check(TOK_NUMBER_INT) || check(TOK_NUMBER_DOUBLE) || check(TOK_NUMBER_FLOAT)))
+        return NULL;
+
+    ASTNode* node = new_node(AST_EXPRESSION);
+    if (node == NULL)
+        return NULL;
+    
+    node->name = strdup(current_token()->lexme);
+    node->type_info.base_type = current_token()->type;
+    node->type_info.pointer_level = 0;
+
+    advance();
+    return node;
+}
+
+ASTNode* parse_string_literal() {
+    if (!check(TOK_STRING_LITERAL))
+        return NULL;
+
+    ASTNode* node = new_node(AST_STRING_LITERAL);
+    if (node == NULL)
+        return NULL;
+
+    node->name = strdup(current_token()->lexme);
+    node->type_info.base_type = TOK_CHAR;
+    node->type_info.pointer_level = 1;
+
+    advance();
+    return node;
+}
+
+ASTNode* parse_char_literal() {
+    if (!check(TOK_CHAR_LITERAL))
+        return NULL;
+
+    ASTNode* node = new_node(AST_CHAR_LITERAL);
+    if (node == NULL)
+        return NULL;
+
+    node->name = strdup(current_token()->lexme);
+    node->type_info.base_type = TOK_CHAR;
+    node->type_info.pointer_level = 0;
+
+    advance();
+    return node;
 }
 
 ASTNode* parse_identifier_expression()
@@ -1231,6 +1278,8 @@ void print_ast(ASTNode* node, int level)
             }
             printf(")\n");
             break;
+        case AST_STRING_LITERAL:printf("StringLiteral(\"%s\")\n", node->name ? node->name : ""); break;            
+        case AST_CHAR_LITERAL:  printf("CharLiteral('%s')\n", node->name ? node->name : ""); break;
         case AST_EXPRESSION:
             if (node->name != NULL) {
                 switch (node->type_info.base_type) {

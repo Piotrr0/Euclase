@@ -31,6 +31,9 @@ typedef enum {
     TOK_WHILE,
     TOK_STRUCT,
 
+    TOK_STRING_LITERAL,
+    TOK_CHAR_LITERAL,
+
     TOK_ADDITION,
     TOK_SUBTRACTION,
     TOK_MULTIPLICATION,
@@ -112,6 +115,8 @@ Tokens* tokenize(Lexer* lexer, const char* source, int debug);
 Token lex_symbol(Lexer* lexer);
 Token lex_number(Lexer* lexer);
 Token lex_keyword(Lexer* lexer);
+Token lex_string_literal(Lexer* lexer);
+Token lex_char_literal(Lexer* lexer);
 Token lex_next_token(Lexer* lexer);
 void skip_whitespaces(Lexer* lexer);
 void skip_whitespace_and_comments(Lexer* lexer);

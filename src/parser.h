@@ -17,6 +17,8 @@ typedef enum {
     AST_WHILE,
     
     AST_IDENTIFIER,
+    AST_STRING_LITERAL,
+    AST_CHAR_LITERAL,
     AST_EXPRESSION,
     AST_FUNC_CALL,
     AST_DEREFERENCE,
@@ -89,6 +91,9 @@ ASTNode* parse_postfix();
 ASTNode* parse_primary();
 ASTNode* parse_parens();
 ASTNode* parse_primary_expression();
+ASTNode* parse_number_literal();
+ASTNode* parse_string_literal();
+ASTNode* parse_char_literal();
 ASTNode* parse_identifier_expression();
 ASTNode* parse_dereference();
 ASTNode* parse_address_of();

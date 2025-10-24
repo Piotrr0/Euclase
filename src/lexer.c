@@ -215,6 +215,51 @@ Token lex_keyword(Lexer* lexer) {
     return make_token(type, buffer, line, col);
 }
 
+Token lex_string_literal(Lexer* lexer) {
+    const int line = lexer->line;
+    const int col = lexer->column;
+    
+    char buffer[MAX_TOKEN_LEN];
+    int i = 0;
+    
+    get(lexer);
+    while (peek(lexer) != '"' && peek(lexer) != '\0' && i < MAX_TOKEN_LEN - 1) {
+        buffer[i++] = get(lexer);
+    }
+    
+    buffer[i] = '\0';
+    
+    if (peek(lexer) == '"') {
+        get(lexer);
+        return make_token(TOK_STRING_LITERAL, buffer, line, col);
+    }
+
+    return make_token(TOK_ERROR, "invalid string literal", line, col);
+}
+
+Token lex_char_literal(Lexer* lexer) {
+    const int line = lexer->line;
+    const int col = lexer->column;
+    
+    char buffer[4];
+    int i = 0;
+    
+    get(lexer);
+    
+    if (peek(lexer) != '\'' && peek(lexer) != '\0') {
+        buffer[i++] = get(lexer);
+    }
+    
+    buffer[i] = '\0';
+    
+    if (peek(lexer) == '\'') {
+        get(lexer);
+        return make_token(TOK_CHAR_LITERAL, buffer, line, col);
+    }
+
+    return make_token(TOK_ERROR, "invalid char literal", line, col);
+}
+
 Token lex_next_token(Lexer* lexer) {
     skip_whitespace_and_comments(lexer);
     const int line = lexer->line;
@@ -277,6 +322,12 @@ Token lex_next_token(Lexer* lexer) {
 
     if (isalpha(c) || c == '_')
         return lex_keyword(lexer);
+
+    if (c == '"')
+        return lex_string_literal(lexer);
+    
+    if (c == '\'')
+        return lex_char_literal(lexer);
 
     get(lexer);
     return make_token(TOK_ERROR, NULL, line, col);
@@ -400,6 +451,9 @@ const char* token_type_name(TokenType type) {
         case TOK_ASSIGNMENT_MULTIPLICATION:   return "ASSIGNMENT_MULTIPLICATION";
         case TOK_ASSIGNMENT_DIVISION:         return "ASSIGNMENT_DIVISION";
         case TOK_ASSIGNMENT_MODULO:           return "ASSIGNMENT_MODULO";
+
+        case TOK_STRING_LITERAL:return "TOK_STRING_LITERAL";
+        case TOK_CHAR_LITERAL:  return "TOK_CHAR_LITERAL";            
 
         case TOK_VOID:          return "VOID";
         case TOK_INT:           return "INT";

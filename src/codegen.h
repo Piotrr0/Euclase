@@ -41,6 +41,8 @@ LLVMValueRef codegen_less_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeK
 LLVMValueRef codegen_greater_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
 
 LLVMValueRef codegen_constant(ASTNode* node);
+LLVMValueRef codegen_string_literal(ASTNode* node);
+LLVMValueRef codegen_char_literal(ASTNode* node);
 LLVMValueRef codegen_variable_load(const char* name);
 LLVMValueRef codegen_cast(ASTNode* node);
 LLVMValueRef codegen_function_call(ASTNode* node);
