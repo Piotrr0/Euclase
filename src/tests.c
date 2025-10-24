@@ -257,7 +257,7 @@ const char* test_struct =
 const char* test_string_literal = 
     "namespace main {"
     "   int main() {"
-    "       char a = 'h;"
+    "       char a = 'h';"
     "       char* b = \"hello world\";"
 
     "       return 5;"
