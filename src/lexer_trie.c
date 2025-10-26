@@ -8,9 +8,6 @@ TrieNode* create_trie_node() {
 
     node->token_type = TOK_NONE;
     node->is_terminal = 0;
-    for (int i = 0; i < MAX_CHILDREN; i++) {
-        node->children[i] = NULL;
-    }
     return node;
 }
 
