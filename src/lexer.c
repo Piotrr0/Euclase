@@ -4,51 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define MAX_TOKEN_LEN 64
-#define INITIAL_CAPACITY 32
-
-Keyword keywords[] = {
-    {"return",    TOK_RETURN},
-    {"namespace", TOK_NAMESPACE},
-    {"void",      TOK_VOID},
-    {"int",       TOK_INT},
-    {"uint",      TOK_UINT},
-    {"float",     TOK_FLOAT},
-    {"ufloat",    TOK_UFLOAT},
-    {"double",    TOK_DOUBLE},
-    {"udouble",   TOK_UDOUBLE},
-    {"char",      TOK_CHAR},
-    {"uchar",     TOK_UCHAR},
-    {"if",        TOK_IF},
-    {"else",      TOK_ELSE},
-    {"for",       TOK_FOR},
-    {"while",     TOK_WHILE},
-    {"struct",    TOK_STRUCT},
-    {NULL,        TOK_IDENTIFIER}
-};
-
-Symbol symbols[] = {
-    {'{', TOK_LBRACE},
-    {'}', TOK_RBRACE},
-    {'(', TOK_LPAREN},
-    {')', TOK_RPAREN},
-    {',', TOK_COMMA},
-    {'.', TOK_DOT},
-    {';', TOK_SEMICOLON},
-    {'=', TOK_ASSIGNMENT},
-    {'<', TOK_LESS},
-    {'>', TOK_GREATER},
-    {'&', TOK_AMPERSAND},
-
-    {'+', TOK_ADDITION},
-    {'-', TOK_SUBTRACTION},
-    {'*', TOK_MULTIPLICATION},
-    {'/', TOK_DIVISION},
-    {'%', TOK_MODULO},
-
-    {'\0',TOK_EOF},
-};
-
 Token make_token(TokenType type, const char* lexeme, int line, int column) {
     Token t;
     memset(&t, 0, sizeof(t));
@@ -116,42 +71,36 @@ void free_tokens(Tokens* tokens) {
     free(tokens);
 }
 
-TokenType lookup_for_symbol(char c) {
-    for (int i = 0; symbols[i].ch; i++) {
-        if (symbols[i].ch == c)
-            return symbols[i].type;
-    }
-    return TOK_ERROR;
-}
-
-TokenType lookup_for_keyword(const char* str) {
-    for (int i = 0; keywords[i].name; i++) {
-        if (strcmp(str, keywords[i].name) == 0)
-            return keywords[i].type;
-    }
-    return TOK_IDENTIFIER;
-}
-
 void init_lexer(Lexer* lexer, const char* source) {
     lexer->source = source;
     lexer->position = 0;
     lexer->line = 1;
     lexer->column = 1;
+
+    lexer->keywords_trie = create_trie_node();
+    lexer->operator_trie = create_trie_node();
+    build_operator_trie(lexer->operator_trie);
+    build_keyword_trie(lexer->keywords_trie);
+}
+
+void cleanup_lexer(Lexer* lexer) {
+    if (lexer->keywords_trie)
+    {
+        free_trie(lexer->keywords_trie);
+        lexer->keywords_trie = NULL;
+    }
+
+    if (lexer->operator_trie)
+    {
+        free_trie(lexer->operator_trie);
+        lexer->operator_trie = NULL;
+    }
 }
 
 void skip_whitespaces(Lexer* lexer) {
     while (peek(lexer) == ' ' || peek(lexer) == '\t' || peek(lexer) == '\n' || peek(lexer) == '\r') {
         get(lexer);
     }
-}
-
-Token lex_symbol(Lexer* lexer) {
-    const int line = lexer->line;
-    const int col = lexer->column;
-
-    char c = get(lexer);
-    TokenType type = lookup_for_symbol(c);
-    return make_token(type, NULL, line, col);
 }
 
 Token lex_number(Lexer* lexer) {
@@ -199,31 +148,15 @@ Token lex_number(Lexer* lexer) {
     return make_token(type, buffer, line, col);
 }
 
-Token lex_keyword(Lexer* lexer) {
-    const int line = lexer->line;
-    const int col = lexer->column;
-
-    char buffer[MAX_TOKEN_LEN];
-    int i = 0;
-
-    while ((isalnum(peek(lexer)) || peek(lexer) == '_') && i < MAX_TOKEN_LEN - 1) {
-        buffer[i++] = get(lexer);
-    }
-    buffer[i] = '\0';
-
-    TokenType type = lookup_for_keyword(buffer);
-    return make_token(type, buffer, line, col);
-}
-
 Token lex_string_literal(Lexer* lexer) {
     const int line = lexer->line;
     const int col = lexer->column;
     
-    char buffer[MAX_TOKEN_LEN];
+    char buffer[MAX_STRING_LITERAL_LEN];
     int i = 0;
     
     get(lexer);
-    while (peek(lexer) != '"' && peek(lexer) != '\0' && i < MAX_TOKEN_LEN - 1) {
+    while (peek(lexer) != '"' && peek(lexer) != '\0' && i < MAX_STRING_LITERAL_LEN - 1) {
         buffer[i++] = get(lexer);
     }
     
@@ -241,7 +174,7 @@ Token lex_char_literal(Lexer* lexer) {
     const int line = lexer->line;
     const int col = lexer->column;
     
-    char buffer[4];
+    char buffer[CHAR_LITERAL_LEN];
     int i = 0;
     
     get(lexer);
@@ -260,77 +193,113 @@ Token lex_char_literal(Lexer* lexer) {
     return make_token(TOK_ERROR, "invalid char literal", line, col);
 }
 
+TrieMatch trie_match(TrieNode* root, Lexer* lexer)
+{
+    TrieMatch result = {TOK_NONE, 0};
+    TrieMatch last_valid = {TOK_NONE, 0};
+    
+    TrieNode* current = root;
+    int chars_consumed = 0;
+    
+    while (1) {
+        char c = peek_ahead(lexer, chars_consumed);
+        
+        if (current->is_terminal) {
+            last_valid.type = current->token_type;
+            last_valid.length = chars_consumed;
+        }
+        
+        if (c == '\0' || current->children[(unsigned char)c] == NULL) {
+            break;
+        }
+        
+        current = current->children[(unsigned char)c];
+        chars_consumed++;
+    }
+    
+    if (current->is_terminal) {
+        last_valid.type = current->token_type;
+        last_valid.length = chars_consumed;
+    }
+    
+    return last_valid;
+}
+
+Token lex_operator_trie(Lexer* lexer, TrieNode* trie_root) {
+    const int line = lexer->line;
+    const int col = lexer->column;
+    
+    TrieMatch match = trie_match(trie_root, lexer);
+    
+    if (match.type == TOK_NONE || match.length == 0) {
+        char c = get(lexer);
+        return make_token(TOK_ERROR, "error", line, col);
+    }
+    
+    char lexeme[MAX_OPERATOR_LEN];
+    for (int i = 0; i < match.length; i++) {
+        lexeme[i] = get(lexer);
+    }
+    lexeme[match.length] = '\0';
+    
+    return make_token(match.type, lexeme, line, col);
+}
+
+Token lex_identifier_or_keyword(Lexer* lexer, TrieNode* keyword_trie) {
+    const int line = lexer->line;
+    const int col = lexer->column;
+
+    char buffer[MAX_TOKEN_LEN];
+    int i = 0;
+
+    while ((isalnum(peek(lexer)) || peek(lexer) == '_') && i < MAX_TOKEN_LEN - 1) {
+        buffer[i++] = get(lexer);
+    }
+    buffer[i] = '\0';
+
+    TrieNode* current = keyword_trie;
+    int matched_length = 0;
+    
+    for (int j = 0; j < i; j++) {
+        unsigned char ch = (unsigned char)buffer[j];
+        
+        if (current->children[ch] == NULL) {
+            break;
+        }
+        
+        current = current->children[ch];
+        matched_length++;
+    }
+    
+    if (matched_length == i && current->is_terminal) {
+        return make_token(current->token_type, buffer, line, col);
+    }
+    
+    return make_token(TOK_IDENTIFIER, buffer, line, col);
+}
+
 Token lex_next_token(Lexer* lexer) {
     skip_whitespace_and_comments(lexer);
     const int line = lexer->line;
     const int col = lexer->column;
     char c = peek(lexer);
-
-    if (c == '\0') 
-        return make_token(TOK_EOF, NULL, line, col);
     
-    if (c == '=' && peek_ahead(lexer, 1) == '=') {
-        get(lexer); get(lexer);
-        return make_token(TOK_EQUAL, "==", line, col);
-    }
+    if (c == '\0')
+        return make_token(TOK_EOF, NULL, line, col);
 
-    if (c == '!' && peek_ahead(lexer, 1) == '=') {
-        get(lexer); get(lexer);
-        return make_token(TOK_NOT_EQUAL, "!=", line, col);
-    }
+    if (c == '"')
+        return lex_string_literal(lexer);
 
-    if (c == '<' && peek_ahead(lexer, 1) == '=') {
-        get(lexer); get(lexer);
-        return make_token(TOK_LESS_EQUALS, "<=", line, col);
-    }
-
-    if (c == '>' && peek_ahead(lexer, 1) == '=') {
-        get(lexer); get(lexer);
-        return make_token(TOK_GREATER_EQUALS, ">=", line, col);
-    }
-
-    if (c == '+' && peek_ahead(lexer, 1) == '=' ) {
-        get(lexer); get(lexer);
-        return make_token(TOK_ASSIGNMENT_ADDITION, "+=", line, col);
-    }
-
-    if (c == '-' && peek_ahead(lexer, 1) == '=' ) {
-        get(lexer); get(lexer);
-        return make_token(TOK_ASSIGNMENT_SUBTRACTION, "-=", line, col);
-    }
-
-    if (c == '*' && peek_ahead(lexer, 1) == '=' ) {
-        get(lexer); get(lexer);
-        return make_token(TOK_ASSIGNMENT_MULTIPLICATION, "*=", line, col);
-    }
-
-    if (c == '/' && peek_ahead(lexer, 1) == '=' ) {
-        get(lexer); get(lexer);
-        return make_token(TOK_ASSIGNMENT_DIVISION, "/=", line, col);
-    }
-
-    if (c == '%' && peek_ahead(lexer, 1) == '=' ) {
-        get(lexer); get(lexer);
-        return make_token(TOK_ASSIGNMENT_MODULO, "%=", line, col);
-    }
-
-    if (lookup_for_symbol(c) != TOK_ERROR)
-        return lex_symbol(lexer);
+    if (c == '\'')
+        return lex_char_literal(lexer);
 
     if (isdigit(c))
         return lex_number(lexer);
 
     if (isalpha(c) || c == '_')
-        return lex_keyword(lexer);
+        return lex_identifier_or_keyword(lexer, lexer->keywords_trie);
 
-    if (c == '"')
-        return lex_string_literal(lexer);
-    
-    if (c == '\'')
-        return lex_char_literal(lexer);
-
-    get(lexer);
-    return make_token(TOK_ERROR, NULL, line, col);
+    return lex_operator_trie(lexer, lexer->operator_trie);
 }
 
 void skip_line_comment(Lexer* lexer) {
