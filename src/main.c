@@ -140,7 +140,7 @@ void compile_source_file(int argc, char** argv)
     
     Lexer lexer;
     Tokens* tokens = tokenize(&lexer, code, 1);
-
+    cleanup_lexer(&lexer);
     init_parser(tokens);
     ASTNode* program = parse_program();
 

@@ -651,7 +651,7 @@ void codegen_struct_declaration(ASTNode* node) {
         for (int j = 0; j < field->type_info.pointer_level; j++)
             field_type = LLVMPointerType(field_type, 0);
 
-        field_types[i++] = field_type;
+        field_types[i] = field_type;
     }
 
     LLVMStructSetBody(structType, field_types, node->child_count, 0);
