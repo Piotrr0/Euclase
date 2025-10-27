@@ -321,7 +321,7 @@ ASTNode* parse_postfix()
         }
         
         ASTNode* member_access = new_node(AST_MEMBER_ACCESS);
-        member_access->name = strdup(current_token()->lexme);
+        member_access->name = sv_to_owned_cstr(current_token()->lexeme);
         advance();
         
         add_child(member_access, node);
@@ -381,7 +381,7 @@ ASTNode* parse_number_literal() {
     if (node == NULL)
         return NULL;
     
-    node->name = strdup(current_token()->lexme);
+    node->name = sv_to_owned_cstr(current_token()->lexeme);
     node->type_info.base_type = current_token()->type;
     node->type_info.pointer_level = 0;
 
@@ -397,7 +397,7 @@ ASTNode* parse_string_literal() {
     if (node == NULL)
         return NULL;
 
-    node->name = strdup(current_token()->lexme);
+    node->name = sv_to_owned_cstr(current_token()->lexeme);
     node->type_info.base_type = TOK_CHAR;
     node->type_info.pointer_level = 1;
 
@@ -413,7 +413,7 @@ ASTNode* parse_char_literal() {
     if (node == NULL)
         return NULL;
 
-    node->name = strdup(current_token()->lexme);
+    node->name = sv_to_owned_cstr(current_token()->lexeme);
     node->type_info.base_type = TOK_CHAR;
     node->type_info.pointer_level = 0;
 
@@ -428,7 +428,7 @@ ASTNode* parse_identifier_expression()
         return NULL;
     }
 
-    node->name = strdup(current_token()->lexme);
+    node->name = sv_to_owned_cstr(current_token()->lexeme);
     advance(); 
     return node;
 }
@@ -476,7 +476,7 @@ ASTNode* parse_function_call()
         return NULL;
     }
 
-    char* name = strdup(current_token()->lexme);
+    char* name = sv_to_owned_cstr(current_token()->lexeme);
     advance();
 
     if(!match(TOK_LPAREN)) {
@@ -883,7 +883,7 @@ ASTNode* parse_variable_declaration() {
     if(node == NULL)
         return NULL;
 
-    node->name = strdup(current_token()->lexme);
+    node->name = sv_to_owned_cstr(current_token()->lexeme);
     node->type_info = type;
     advance();
 
@@ -915,7 +915,7 @@ ASTNode* parse_struct_member() {
     if(member == NULL)
         return NULL;
 
-    member->name = strdup(current_token()->lexme);
+    member->name = sv_to_owned_cstr(current_token()->lexeme);
     member->type_info = type;
     advance();
 
@@ -938,7 +938,7 @@ ASTNode* parse_struct_declaration() {
     if(struct_node == NULL)
         return NULL;
         
-    struct_node->name = strdup(current_token()->lexme);
+    struct_node->name = sv_to_owned_cstr(current_token()->lexeme);
     advance();
     
     if (!match(TOK_LBRACE)) {
@@ -1085,7 +1085,7 @@ ASTNode* parse_parameters() {
             free_ast(param_list);
             return NULL;
         }
-        char* param_name = strdup(current_token()->lexme);
+        char* param_name = sv_to_owned_cstr(current_token()->lexeme);
         advance();
 
         ASTNode* param_node = new_node(AST_VAR_DECL);
@@ -1127,7 +1127,7 @@ ASTNode* parse_function()
         return NULL;
 
     func->type_info = return_type;
-    func->name = strdup(current_token()->lexme);
+    func->name = sv_to_owned_cstr(current_token()->lexeme);
     advance();
 
     ASTNode* params = parse_parameters();
@@ -1156,7 +1156,7 @@ ASTNode* parse_namespace(ASTNodeType type)
         return NULL;
     }
 
-    char* namespace_name = strdup(current_token()->lexme);
+    char* namespace_name = sv_to_owned_cstr(current_token()->lexeme);
     if (!match(TOK_IDENTIFIER)) {
         free(namespace_name);
         printf("Parse error: expected namespace name\n");
