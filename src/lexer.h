@@ -3,15 +3,9 @@
 
 #include "token.h"
 #include "lexer_trie.h"
-
-#define MAX_TOKEN_LEN 64
-#define MAX_OPERATOR_LEN 16
-#define MAX_STRING_LITERAL_LEN 256
-
-#define CHAR_LITERAL_LEN 4
+#include "string_view.h"
 
 #define INITIAL_CAPACITY 32
-
 
 typedef struct Lexer {
     const char* source;
@@ -23,8 +17,7 @@ typedef struct Lexer {
     TrieNode* operator_trie;
 } Lexer;
 
-Token make_token(TokenType type, const char* lexeme, int line, int column);
-void free_token(Token* token);
+Token make_token(TokenType type, StringView lexeme, int line, int column);
 
 Tokens* create_tokens();
 void add_token(Tokens* tokens, Token token);

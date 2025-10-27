@@ -1,6 +1,8 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include "string_view.h"
+
 typedef enum {
     TOK_LBRACE, 
     TOK_RBRACE, 
@@ -65,7 +67,7 @@ typedef enum {
 
 typedef struct Token {
     TokenType type;
-    char* lexme;
+    StringView lexeme;
 
     int line;
     int column;
