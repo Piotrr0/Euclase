@@ -1,6 +1,6 @@
 #include "codegen.h"
 #include "parser.h"
-#include "ast_layout.h"
+#include "token.h"
 #include <llvm-c/Core.h>
 #include <llvm-c/Types.h>
 #include <stdio.h>
@@ -58,19 +58,19 @@ LLVMValueRef codegen_function_call(ASTNode* node)
     if(node->type != AST_FUNC_CALL)
         return NULL;
 
-    const int args_count = node->child_count;
-    LLVMValueRef args[args_count];
+    FuncCallNode function_call_node = node->as.func_call;
+    LLVMValueRef args[function_call_node.arg_count];
 
-    for(int i = 0; i<node->child_count; i++) 
+    for(int i = 0; i < function_call_node.arg_count; i++) 
     {
-        args[i] = codegen_expression(node->children[i]);
+        args[i] = codegen_expression(function_call_node.args[i]);
         if (args[i] == NULL) {
             printf("Codegen: Failed to generate argument %d for function call\n", i);
             return NULL;
         }
     }
 
-    LLVMValueRef func = LLVMGetNamedFunction(ctx.module, node->name);
+    LLVMValueRef func = LLVMGetNamedFunction(ctx.module, function_call_node.name);
     if(func == NULL)
         return NULL;
 
@@ -78,15 +78,14 @@ LLVMValueRef codegen_function_call(ASTNode* node)
     if(func_type == NULL)
         return NULL;
 
-    return LLVMBuildCall2(ctx.builder, func_type, func, args, args_count, "func_call");
+    return LLVMBuildCall2(ctx.builder, func_type, func, args, function_call_node.arg_count, "func_call");
 }
 
 void codegen_while_loop(ASTNode* node) {
     if (node->type != AST_WHILE)
         return;
 
-    ASTNode* cond_node = node->children[WHILE_CONDITION];
-    ASTNode* body_node = node->children[WHILE_BLOCK];
+    WhileNode while_node = node->as.while_stmt;
 
     LLVMBasicBlockRef condBB = LLVMAppendBasicBlock(current_function, "while_cond");
     LLVMBasicBlockRef bodyBB = LLVMAppendBasicBlock(current_function, "while_body");
@@ -95,11 +94,11 @@ void codegen_while_loop(ASTNode* node) {
     LLVMBuildBr(ctx.builder, condBB);
 
     LLVMPositionBuilderAtEnd(ctx.builder, condBB);
-    LLVMValueRef cond_val = codegen_expression(cond_node);
+    LLVMValueRef cond_val = codegen_expression(while_node.condition);
     LLVMBuildCondBr(ctx.builder, cond_val, bodyBB, afterBB);
 
     LLVMPositionBuilderAtEnd(ctx.builder, bodyBB);
-    codegen_block(body_node);
+    codegen_block(while_node.body);
 
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ctx.builder)) == NULL)
         LLVMBuildBr(ctx.builder, condBB);
@@ -112,15 +111,12 @@ void codegen_for_loop(ASTNode* node)
     if (node->type != AST_FOR)
         return;
 
-    ASTNode* init_node = node->children[FOR_INIT];
-    ASTNode* cond_node = node->children[FOR_CONDITION];
-    ASTNode* update_node = node->children[FOR_UPDATE];
-    ASTNode* body_node = node->children[FOR_BLOCK];
+    ForNode for_node = node->as.for_stmt;
 
     push_scope(st);
 
-    if (init_node != NULL)
-        codegen_statement(init_node);
+    if (for_node.init != NULL)
+        codegen_statement(for_node.init);
 
     LLVMBasicBlockRef updBB  = LLVMAppendBasicBlock(current_function, "for_upd");
     LLVMBasicBlockRef condBB = LLVMAppendBasicBlock(current_function, "for_cond");
@@ -129,17 +125,17 @@ void codegen_for_loop(ASTNode* node)
 
     LLVMBuildBr(ctx.builder, condBB);
     LLVMPositionBuilderAtEnd(ctx.builder, condBB);
-    LLVMValueRef cond_val = codegen_expression(cond_node);
+    LLVMValueRef cond_val = codegen_expression(for_node.condition);
     LLVMBuildCondBr(ctx.builder, cond_val, bodyBB, afterBB);
 
     LLVMPositionBuilderAtEnd(ctx.builder, bodyBB);
-    codegen_block(body_node);
+    codegen_block(for_node.body);
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(ctx.builder)) == NULL)
         LLVMBuildBr(ctx.builder, updBB);
 
     LLVMPositionBuilderAtEnd(ctx.builder, updBB);
-    if (update_node != NULL)
-        codegen_statement(update_node);
+    if (for_node.update != NULL)
+        codegen_statement(for_node.update);
     LLVMBuildBr(ctx.builder, condBB);
 
     LLVMPositionBuilderAtEnd(ctx.builder, afterBB);
@@ -148,7 +144,6 @@ void codegen_for_loop(ASTNode* node)
 
 int does_type_kind_match(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind* out_kind)
 {
-
     if(left == NULL || right == NULL)
         return 0;
 
@@ -166,31 +161,19 @@ int does_type_kind_match(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind* ou
     return 0;
 }
 
-void codegen_condition(ASTNode* node)
+void codegen_if(ASTNode* node)
 {
     if(node->type != AST_IF)
         return;
 
-    ASTNode* node_condition = NULL;
-    ASTNode* node_then_block = NULL;
-    ASTNode* node_else_block = NULL;
+    IfNode if_node = node->as.if_stmt;
 
-    switch(node->child_count) {
-        case 3: node_else_block = node->children[IF_ELSE_BLOCK];
-        case 2: node_then_block = node->children[IF_THEN_BLOCK];
-        case 1: node_condition = node->children[IF_CONDITION]; break; 
-        default: return;
-    }
-
-    if(node_condition == NULL || node_then_block == NULL)
-        return;
-
-    LLVMValueRef condition = codegen_expression(node_condition);
+    LLVMValueRef condition = codegen_expression(if_node.condition);
     LLVMBasicBlockRef thenBB  = LLVMAppendBasicBlock(current_function, "then");
     LLVMBasicBlockRef mergeBB = LLVMAppendBasicBlock(current_function, "if_cont");
 
     LLVMBasicBlockRef elseBB = NULL;
-    if (node_else_block != NULL) {
+    if (if_node.else_branch != NULL) {
         elseBB = LLVMAppendBasicBlock(current_function, "else");
         LLVMBuildCondBr(ctx.builder, condition, thenBB, elseBB);
     }
@@ -198,11 +181,11 @@ void codegen_condition(ASTNode* node)
         LLVMBuildCondBr(ctx.builder, condition, thenBB, mergeBB);
 
     LLVMPositionBuilderAtEnd(ctx.builder, thenBB);
-    codegen_then_block(node_then_block, mergeBB);
+    codegen_then_block(if_node.then_branch, mergeBB);
 
-    if (node_else_block != NULL) {
+    if (if_node.else_branch != NULL) {
         LLVMPositionBuilderAtEnd(ctx.builder, elseBB);
-        codegen_else_block(node_else_block, mergeBB);
+        codegen_else_block(if_node.else_branch, mergeBB);
     }
 
     LLVMPositionBuilderAtEnd(ctx.builder, mergeBB);
@@ -232,38 +215,35 @@ void codegen_else_block(ASTNode* node_else, LLVMBasicBlockRef mergeBB)
         LLVMBuildBr(ctx.builder, mergeBB);
 }
 
-LLVMValueRef codegen_equality(ASTNode* node) {
-    if (node->type != AST_EQUAL && node->type != AST_NOT_EQUAL)
+LLVMValueRef codegen_binary_op(ASTNode* node) {
+    if (node->type != AST_BINARY_OP)
         return NULL;
 
-    LLVMValueRef left  = codegen_expression(node->children[BIN_LEFT]);
-    LLVMValueRef right = codegen_expression(node->children[BIN_RIGHT]);
+    BinaryOpNode binary_node = node->as.binary_op;
+
+    LLVMValueRef left = codegen_expression(binary_node.left);
+    LLVMValueRef right = codegen_expression(binary_node.right);
+
+    if(left == NULL || right == NULL)
+        return NULL;
 
     LLVMTypeKind type;
-    if (!does_type_kind_match(left, right, &type))
+    if(!does_type_kind_match(left, right, &type))
         return NULL;
 
-    int is_not_equal = (node->type == AST_NOT_EQUAL);
-    return codegen_compare(left, right, type, is_not_equal);
-}
-
-LLVMValueRef codegen_relational(ASTNode* node) {
-    if(node->type != AST_LESS && node->type != AST_GREATER && node->type != AST_GREATER_EQUAL && node->type != AST_LESS_EQUAL)
-        return NULL;
-
-    LLVMValueRef left  = codegen_expression(node->children[BIN_LEFT]);
-    LLVMValueRef right = codegen_expression(node->children[BIN_RIGHT]);
-
-    LLVMTypeKind type;
-    if (!does_type_kind_match(left, right, &type))
-        return NULL;
-
-    switch (node->type) {
-        case AST_LESS:          return codegen_less(left, right, type); break;
-        case AST_GREATER:       return codegen_greater(left, right, type); break;
-        case AST_LESS_EQUAL:    return codegen_less_equal(left, right, type); break;
-        case AST_GREATER_EQUAL: return codegen_greater_equal(left, right, type); break;
-        default: return NULL;
+    switch (node->as.binary_op.op) {
+        case OP_ADD: return codegen_addition(left, right, type);
+        case OP_SUB: return codegen_subtraction(left, right, type);
+        case OP_MUL: return codegen_multiplication(left, right, type);
+        case OP_DIV: return codegen_division(left, right, type);
+        case OP_MOD: return codegen_modulo(left, right, type);
+        case OP_EQ:  return codegen_compare(left, right, type, 0);
+        case OP_NE:  return codegen_compare(left, right, type, 1);
+        case OP_LT:  return codegen_less(left, right, type);
+        case OP_GT:  return codegen_greater(left, right, type);
+        case OP_LE:  return codegen_less_equal(left, right, type);
+        case OP_GE:  return codegen_greater_equal(left, right, type);
+        default:     return NULL;
     }
 }
 
@@ -279,7 +259,7 @@ LLVMValueRef codegen_greater(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind
     if(type == LLVMFloatTypeKind || type == LLVMDoubleTypeKind)
         return LLVMBuildFCmp(ctx.builder, LLVMRealOGT, left, right, "fgr");
     else
-        return LLVMBuildICmp(ctx.builder,LLVMIntSGT, left, right, "lgr");
+        return LLVMBuildICmp(ctx.builder, LLVMIntSGT, left, right, "lgr");
 }
 
 LLVMValueRef codegen_less(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type) {
@@ -301,27 +281,6 @@ LLVMValueRef codegen_greater_equal(LLVMValueRef left, LLVMValueRef right, LLVMTy
         return LLVMBuildFCmp(ctx.builder, LLVMRealOGE, left, right, "fge");
     else
         return LLVMBuildICmp(ctx.builder, LLVMIntSGE, left, right, "lle");
-}
-
-LLVMValueRef codegen_arithmetic_op(ASTNode* node) {
-    LLVMValueRef left = codegen_expression(node->children[BIN_LEFT]);
-    LLVMValueRef right = codegen_expression(node->children[BIN_RIGHT]);
-
-    if(left == NULL || right == NULL)
-        return NULL;
-
-    LLVMTypeKind type;
-    if(!does_type_kind_match(left, right, &type))
-        return  NULL;
-
-    switch (node->type) {
-        case AST_ADDITION:          return codegen_addition(left, right, type);
-        case AST_SUBTRACTION:       return codegen_subtraction(left, right, type);
-        case AST_MULTIPLICATION:    return codegen_multiplication(left, right, type);
-        case AST_DIVISION:          return codegen_division(left, right, type);
-        case AST_MODULO:            return codegen_modulo(left, right, type);
-        default: return NULL;
-    }
 }
 
 LLVMValueRef codegen_addition(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type)
@@ -367,9 +326,13 @@ LLVMValueRef codegen_variable_load(const char* name) {
         return NULL; 
     
     SymbolEntry* entry = lookup_symbol(st, name);
-    SymbolData data = entry->symbol_data;
-    if (entry == NULL || data.alloc == NULL) {
+    if (entry == NULL) {
         printf("Codegen: Undefined variable '%s'\n", name);
+        return NULL;
+    }
+    
+    SymbolData data = entry->symbol_data;
+    if (data.alloc == NULL) {
         return NULL;
     }
 
@@ -381,51 +344,47 @@ LLVMValueRef codegen_variable_load(const char* name) {
         return LLVMBuildLoad2(ctx.builder, LLVMGetAllocatedType(alloca), alloca, "local_load");
 }
 
-LLVMValueRef codegen_constant(ASTNode* node)
+LLVMValueRef codegen_int_literal(ASTNode* node)
 {
-    if (node->name == NULL)
+    if (node->type != AST_INT_LITERAL)
         return NULL;
+    return LLVMConstInt(LLVMInt32TypeInContext(ctx.context), node->as.int_literal.value, 0);
+}
 
-    switch (node->type_info.base_type) {
-        case TOK_NUMBER_INT: {
-            int int_val = atoi(node->name);
-            return LLVMConstInt(LLVMInt32TypeInContext(ctx.context), int_val, 0);
-        }
-        case TOK_NUMBER_FLOAT: {
-            float float_val = strtof(node->name, NULL);
-            return LLVMConstReal(LLVMFloatTypeInContext(ctx.context), float_val);
-        }
-        case TOK_NUMBER_DOUBLE: {
-            double double_val = strtod(node->name, NULL);
-            return LLVMConstReal(LLVMDoubleTypeInContext(ctx.context), double_val);
-        }
-        default:
-            break;
-    }
-    return NULL;
+LLVMValueRef codegen_float_literal(ASTNode* node)
+{
+    if (node->type != AST_FLOAT_LITERAL)
+        return NULL;
+    return LLVMConstReal(LLVMFloatTypeInContext(ctx.context), node->as.float_literal.value);
+}
+
+LLVMValueRef codegen_double_literal(ASTNode* node)
+{
+    if (node->type != AST_DOUBLE_LITERAL)
+        return NULL;
+    return LLVMConstReal(LLVMDoubleTypeInContext(ctx.context), node->as.double_literal.value);
 }
 
 LLVMValueRef codegen_string_literal(ASTNode* node) {
     if (node->type != AST_STRING_LITERAL)
         return NULL;
-
-    return LLVMBuildGlobalStringPtr(ctx.builder, node->name, "str");;
+    return LLVMBuildGlobalStringPtr(ctx.builder, node->as.string_literal.value, "str");
 }
 
 LLVMValueRef codegen_char_literal(ASTNode* node) {
-    if (node->type != AST_CHAR_LITERAL || node->name == NULL)
+    if (node->type != AST_CHAR_LITERAL)
         return NULL;
-
-    char char_val = node->name[0];
-    return LLVMConstInt(LLVMInt8TypeInContext(ctx.context), char_val, 0);
+    return LLVMConstInt(LLVMInt8TypeInContext(ctx.context), node->as.char_literal.value, 0);
 }
 
 LLVMValueRef codegen_cast(ASTNode* node) 
 {
-    if(node->type != AST_CAST || node->child_count == 0)
+    if(node->type != AST_CAST)
         return NULL;
 
-    LLVMValueRef value = codegen_expression(node->children[UNARY_OPERAND]);
+    CastNode cast_node = node->as.cast;
+
+    LLVMValueRef value = codegen_expression(cast_node.expr);
     if(value == NULL)
     {
         printf("Codegen: Failed to generate expression for cast\n");
@@ -433,9 +392,9 @@ LLVMValueRef codegen_cast(ASTNode* node)
     }
 
     LLVMTypeRef from_type = LLVMTypeOf(value);
-    LLVMTypeRef to_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
+    LLVMTypeRef to_type = token_type_to_llvm_type(&ctx, cast_node.target_type.base_type);
 
-    for (int i = 0; i < node->type_info.pointer_level; i++) {
+    for (int i = 0; i < cast_node.target_type.pointer_level; i++) {
         to_type = LLVMPointerType(to_type, 0);
     }
 
@@ -500,11 +459,13 @@ LLVMValueRef generate_cast_instruction(LLVMValueRef value, LLVMTypeRef from_type
     return NULL;
 }
 
-LLVMValueRef codegen_unary_minus(ASTNode* node) {
-    if (node->type != AST_UNARY_MINUS)
+LLVMValueRef codegen_negation(ASTNode* node) {
+    if (node->type != AST_NEGATION)
         return NULL;
 
-    LLVMValueRef expression = codegen_expression(node->children[UNARY_OPERAND]);
+    UnaryOpNode negation_node =node->as.unary_op;
+
+    LLVMValueRef expression = codegen_expression(negation_node.operand);
     if (expression == NULL)
         return NULL;
 
@@ -524,29 +485,18 @@ LLVMValueRef codegen_expression(ASTNode *node) {
         return NULL;
 
     switch (node->type) {
-        case AST_EXPRESSION:    return codegen_constant(node);
-        case AST_IDENTIFIER:    return codegen_variable_load(node->name);
-        case AST_FUNC_CALL:     return codegen_function_call(node);
+        case AST_INT_LITERAL:   return codegen_int_literal(node);
+        case AST_FLOAT_LITERAL: return codegen_float_literal(node);
+        case AST_DOUBLE_LITERAL:return codegen_double_literal(node);
         case AST_STRING_LITERAL:return codegen_string_literal(node);
         case AST_CHAR_LITERAL:  return codegen_char_literal(node);
+        case AST_IDENTIFIER:    return codegen_variable_load(node->as.identifier.name);
+        case AST_FUNC_CALL:     return codegen_function_call(node);
         case AST_ADDRESS_OF:    return codegen_address_of(node);
         case AST_DEREFERENCE:   return codegen_dereference(node);
         case AST_CAST:          return codegen_cast(node);
-        case AST_UNARY_MINUS:   return codegen_unary_minus(node);
-
-        case AST_ADDITION:      
-        case AST_SUBTRACTION:
-        case AST_MULTIPLICATION:
-        case AST_DIVISION:
-        case AST_MODULO:        return codegen_arithmetic_op(node);
-
-        case AST_EQUAL:
-        case AST_NOT_EQUAL:     return codegen_equality(node);
-
-        case AST_LESS:
-        case AST_LESS_EQUAL:
-        case AST_GREATER:
-        case AST_GREATER_EQUAL: return codegen_relational(node);
+        case AST_NEGATION:      return codegen_negation(node);
+        case AST_BINARY_OP:     return codegen_binary_op(node);
 
         default:
             printf("Unhandled expression type: %d\n", node->type);
@@ -555,16 +505,19 @@ LLVMValueRef codegen_expression(ASTNode *node) {
 }
 
 void codegen_statement(ASTNode *node) {
+    if (node == NULL)
+        return;
+        
     switch (node->type)
     {
-        case AST_RETURN:        codegen_return(node); break;
-        case AST_VAR_DECL:      codegen_variable_declaration(node); break;
-        case AST_ASSIGN:        codegen_assign(node); break;
-        case AST_IF:            codegen_condition(node); break;
-        case AST_FOR:           codegen_for_loop(node); break;
-        case AST_WHILE:         codegen_while_loop(node); break;
-        case AST_BLOCK:         codegen_block(node); break;
-        default:                return;
+        case AST_RETURN:    codegen_return(node); break;
+        case AST_VAR_DECL:  codegen_variable_declaration(node); break;
+        case AST_ASSIGN:    codegen_assign(node); break;
+        case AST_IF:        codegen_if(node); break;
+        case AST_FOR:       codegen_for_loop(node); break;
+        case AST_WHILE:     codegen_while_loop(node); break;
+        case AST_BLOCK:     codegen_block(node); break;
+        default:            return;
     }
 }
 
@@ -572,30 +525,38 @@ void codegen_return(ASTNode* node) {
     if(node->type != AST_RETURN)
         return;
 
-    if(node->child_count > 0)
+    ReturnNode return_node = node->as.return_stmt;
+
+    if(node->as.return_stmt.value != NULL)
     {
-        LLVMValueRef ret = codegen_expression(node->children[RETURN_VALUE]);
+        LLVMValueRef ret = codegen_expression(return_node.value);
         if(ret)
             LLVMBuildRet(ctx.builder, ret);
         else
             LLVMBuildRetVoid(ctx.builder);
     } 
+    else {
+        LLVMBuildRetVoid(ctx.builder);
+    }
 }
 
 void codegen_variable_declaration(ASTNode* node) {
     if(node->type != AST_VAR_DECL)
-        return ;
+        return;
 
-    LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
-    for (int i = 0; i < node->type_info.pointer_level; i++) {
+    VarDeclNode var_decl_node = node->as.var_decl;
+    TypeInfo var_decl_type = var_decl_node.type;
+
+    LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, var_decl_type.base_type);
+    for (int i = 0; i < var_decl_type.pointer_level; i++) {
         var_type = LLVMPointerType(var_type, 0);
     }
 
-    LLVMValueRef alloca = LLVMBuildAlloca(ctx.builder, var_type, node->name);
+    LLVMValueRef alloca = LLVMBuildAlloca(ctx.builder, var_type, var_decl_node.name);
 
-    if(node->child_count > 0)
+    if(var_decl_node.initializer != NULL)
     {
-        LLVMValueRef init_val = codegen_expression(node->children[VAR_DECL_INITIALIZER]);
+        LLVMValueRef init_val = codegen_expression(var_decl_node.initializer);
         if (init_val == NULL) 
             return;
 
@@ -603,9 +564,9 @@ void codegen_variable_declaration(ASTNode* node) {
     }
 
     SymbolData data = {
-        .name = node->name,
+        .name = var_decl_node.name,
         .is_global = 0,
-        .info = node->type_info,
+        .info = var_decl_node.type,
         .alloc = alloca,
     };
     add_symbol(st, data);
@@ -615,46 +576,54 @@ void codegen_global_variable_declaration(ASTNode *node) {
     if(node->type != AST_VAR_DECL)
         return;
 
-    LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);
-    for (int i = 0; i < node->type_info.pointer_level; i++) {
+    VarDeclNode var_decl_node = node->as.var_decl;
+    TypeInfo var_decl_type = var_decl_node.type;
+
+    LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, var_decl_type.base_type);
+    for (int i = 0; i < var_decl_type.pointer_level; i++) {
         var_type = LLVMPointerType(var_type, 0);
     }
 
-    LLVMValueRef global_var = LLVMAddGlobal(ctx.module, var_type, node->name);
+    LLVMValueRef global_var = LLVMAddGlobal(ctx.module, var_type, var_decl_node.name);
 
-    if(node->child_count > 0) {
-        LLVMValueRef init_val = codegen_expression(node->children[VAR_DECL_INITIALIZER]);
+    if(var_decl_node.initializer != NULL) {
+        LLVMValueRef init_val = codegen_expression(var_decl_node.initializer);
         if (init_val != NULL) {
             LLVMSetInitializer(global_var, init_val);
         }
     }
     
     SymbolData data = {
-        .name = node->name,
+        .name = var_decl_node.name,
         .is_global = 1,
-        .info = node->type_info,
+        .info = var_decl_node.type,
         .alloc = global_var,
     };
     add_symbol(st, data);
 }
 
 void codegen_struct_declaration(ASTNode* node) {
-    if (node->type != AST_STRUCT)
+    if (node->type != AST_STRUCT_DECL)
         return;
     
-    LLVMTypeRef structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), node->name);
-    LLVMTypeRef* field_types = malloc(sizeof(LLVMTypeRef) * node->child_count);
-    for (int i = 0; i<node->child_count; i++)
+    StructDeclNode struct_decl_node = node->as.struct_decl;
+
+    LLVMTypeRef structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), struct_decl_node.name);
+    LLVMTypeRef* field_types = malloc(sizeof(LLVMTypeRef) * struct_decl_node.member_count);
+    
+    for (int i = 0; i < struct_decl_node.member_count; i++)
     {
-        ASTNode* field = node->children[i];
-        LLVMTypeRef field_type = token_type_to_llvm_type(&ctx, field->type_info.base_type);
-        for (int j = 0; j < field->type_info.pointer_level; j++)
+        ASTNode* field = struct_decl_node.members[i];
+        VarDeclNode filed_decl_node = field->as.var_decl;
+
+        LLVMTypeRef field_type = token_type_to_llvm_type(&ctx, filed_decl_node.type.base_type);
+        for (int j = 0; j < filed_decl_node.type.pointer_level; j++)
             field_type = LLVMPointerType(field_type, 0);
 
         field_types[i] = field_type;
     }
 
-    LLVMStructSetBody(structType, field_types, node->child_count, 0);
+    LLVMStructSetBody(structType, field_types, struct_decl_node.member_count, 0);
     free(field_types);
 }
 
@@ -663,38 +632,43 @@ LLVMValueRef codegen_dereference(ASTNode* node)
     if (node->type != AST_DEREFERENCE)
         return NULL;
 
-    if (node->child_count == 0 || !node->children[UNARY_OPERAND])
+    UnaryOpNode dereference_node = node->as.unary_op;
+
+    if (dereference_node.operand == NULL)
         return NULL;
 
-    ASTNode* ptr_expr = node->children[UNARY_OPERAND];
-    
-    if (ptr_expr->type == AST_IDENTIFIER) {
-        SymbolEntry* entry = lookup_symbol(st, ptr_expr->name);
-        SymbolData data = entry->symbol_data;
-        LLVMValueRef alloca = data.alloc;
+    ASTNode* ptr_expr = dereference_node.operand;
+    if (ptr_expr->type != AST_IDENTIFIER) 
+        return NULL;
 
-        if (entry == NULL || alloca == NULL) 
-            return NULL;
-
-        if (entry->symbol_data.info.pointer_level <= 0) {
-            printf("Codegen: Cannot dereference non-pointer variable '%s'\n", ptr_expr->name);
-            return NULL;
-        }
-
-        LLVMValueRef ptr_val;
-        if (data.is_global) 
-            ptr_val = LLVMBuildLoad2(ctx.builder, LLVMGlobalGetValueType(alloca), alloca, "ptr_load");
-        else 
-            ptr_val = LLVMBuildLoad2(ctx.builder, LLVMGetAllocatedType(alloca), alloca, "ptr_load");
+    SymbolEntry* entry = lookup_symbol(st, ptr_expr->as.identifier.name);
+    if (entry == NULL)
+        return NULL;
         
-        LLVMTypeRef pointed_type = token_type_to_llvm_type(&ctx, data.info.base_type);
-        for (int j = 0; j < data.info.pointer_level - 1; j++) {
-            pointed_type = LLVMPointerType(pointed_type, 0);
-        }
-        
-        return LLVMBuildLoad2(ctx.builder, pointed_type, ptr_val, "def");
+    SymbolData data = entry->symbol_data;
+    LLVMValueRef alloca = data.alloc;
+
+    if (alloca == NULL) {
+        return NULL;
     }
-    return NULL;
+
+    if (entry->symbol_data.info.pointer_level <= 0) {
+        printf("Codegen: Cannot dereference non-pointer variable '%s'\n", ptr_expr->as.identifier.name);
+        return NULL;
+    }
+
+    LLVMValueRef ptr_val;
+    if (data.is_global) 
+        ptr_val = LLVMBuildLoad2(ctx.builder, LLVMGlobalGetValueType(alloca), alloca, "ptr_load");
+    else 
+        ptr_val = LLVMBuildLoad2(ctx.builder, LLVMGetAllocatedType(alloca), alloca, "ptr_load");
+        
+    LLVMTypeRef pointed_type = token_type_to_llvm_type(&ctx, data.info.base_type);
+    for (int j = 0; j < data.info.pointer_level - 1; j++) {
+        pointed_type = LLVMPointerType(pointed_type, 0);
+    }
+        
+    return LLVMBuildLoad2(ctx.builder, pointed_type, ptr_val, "deref");
 }
 
 LLVMValueRef codegen_address_of(ASTNode* node)
@@ -702,126 +676,143 @@ LLVMValueRef codegen_address_of(ASTNode* node)
     if(node->type != AST_ADDRESS_OF)
         return NULL;
 
-    if(node->child_count > 0)
-    {
-        ASTNode* addressed_of_node = node->children[UNARY_OPERAND];
-        SymbolEntry* entry = lookup_symbol(st, addressed_of_node->name);
-        if (entry == NULL) 
-            return NULL;
-        return entry->symbol_data.alloc;
-    }
+    if(node->as.unary_op.operand == NULL)
+        return NULL;
 
-    return NULL;
+    ASTNode* addressed_of_node = node->as.unary_op.operand;
+    if (addressed_of_node->type != AST_IDENTIFIER)
+        return NULL;
+        
+    SymbolEntry* entry = lookup_symbol(st, addressed_of_node->as.identifier.name);
+    if (entry == NULL) {
+        return NULL;
+    }
+    return entry->symbol_data.alloc;
 }
 
 void codegen_assign(ASTNode* node)
 {
     if(node->type != AST_ASSIGN)
-        return ;
+        return;
 
-    if(node->child_count >= 2)
+    AssignNode assign_node = node->as.assign;
+    ASTNode* lhs = assign_node.target;
+    ASTNode* rhs = assign_node.value;
+
+    if (lhs == NULL || rhs == NULL)
+        return;
+
+    LLVMValueRef new_val = codegen_expression(rhs);
+    if(new_val == NULL) 
+        return;
+
+    if(lhs->type == AST_IDENTIFIER) 
     {
-        ASTNode* lhs = node->children[ASSIGN_TARGET];
-        ASTNode* rhs = node->children[ASSIGN_VALUE];
+        const char* lhs_name = lhs->as.identifier.name;
+        SymbolEntry* entry = lookup_symbol(st, lhs_name);
+        if(entry == NULL) {
+            printf("Codegen: Undefined variable '%s'\n", lhs_name);
+            return;
+        }
 
-        LLVMValueRef new_val = codegen_expression(rhs);
-        if(new_val == NULL) 
+        LLVMBuildStore(ctx.builder, new_val, entry->symbol_data.alloc); 
+    }
+    else if(lhs->type == AST_DEREFERENCE) {
+        UnaryOpNode unary_node = lhs->as.unary_op;
+        LLVMValueRef ptr = codegen_expression(unary_node.operand);
+        if(ptr == NULL)
             return;
 
-        if(lhs->type == AST_IDENTIFIER) 
-        {
-            SymbolEntry* entry = lookup_symbol(st,lhs->name);
-            if(entry == NULL)
-                return;
-
-            LLVMBuildStore(ctx.builder, new_val, entry->symbol_data.alloc); 
-        }
-
-        else if(lhs->type == AST_DEREFERENCE) {
-            LLVMValueRef ptr = codegen_expression(lhs->children[UNARY_OPERAND]);
-            if(ptr == NULL)
-                return;
-
-            LLVMBuildStore(ctx.builder, new_val, ptr);
-        }
+        LLVMBuildStore(ctx.builder, new_val, ptr);
     }
 }
 
-void codegen_block(ASTNode *node) {
+void codegen_block(ASTNode* node) {
     if(node->type != AST_BLOCK)
     {
         printf("Codegen: Expected block node\n");
         return;
     }
 
+    BlockNode block_node = node->as.block;
+    
     push_scope(st);
-    for(int i = 0; i<node->child_count; i++)
+    for(int i = 0; i < block_node.statement_count; i++)
     {
-        codegen_statement(node->children[i]);
+        codegen_statement(block_node.statements[i]);
     }
     pop_scope(st);
 }
 
-void codegen_function(ASTNode *node) {
+// TODO: clean this mess
+void codegen_function(ASTNode* node) {
     if(node->type != AST_FUNCTION)
     {
         printf("Codegen: Expected function node\n");
         return;
     }
 
-    ASTNode* params_node = node->children[FUNC_PARAMS];
-    if(params_node->type != AST_PARAM_LIST) {
-        printf("Codegen: Expected parameter list node\n");
-        return;
-    }
+    FunctionNode function_node = node->as.function;
 
-    LLVMTypeRef param_types[params_node->child_count] = { };
-
-    for(int i = 0; i<params_node->child_count; i++)
+    LLVMTypeRef param_types[function_node.param_count];
+    for(int i = 0; i < function_node.param_count; i++)
     {
-        ASTNode* param = params_node->children[i];
-        LLVMTypeRef type = token_type_to_llvm_type(&ctx, param->type_info.base_type);
+        ASTNode* param = function_node.params[i];
+        TypeInfo param_info = param->as.param.type;
 
-        const int pointer_level = param->type_info.pointer_level;
+        LLVMTypeRef type = token_type_to_llvm_type(&ctx, param_info.base_type);
+
+        const int pointer_level = param_info.pointer_level;
         for(int j = 0; j < pointer_level; j++)
             type = LLVMPointerType(type, 0);
 
         param_types[i] = type; 
     }
     
-    LLVMTypeRef ret_type = token_type_to_llvm_type(&ctx, node->type_info.base_type);    
+    LLVMTypeRef ret_type = token_type_to_llvm_type(&ctx, function_node.return_type.base_type);    
 
-    LLVMTypeRef func_type = LLVMFunctionType(ret_type, param_types, params_node->child_count, 0);
-    LLVMValueRef function = LLVMAddFunction(ctx.module, node->name, func_type);
-
+    LLVMTypeRef func_type = LLVMFunctionType(ret_type, param_types, function_node.param_count, 0);
+    LLVMValueRef function = LLVMAddFunction(ctx.module, function_node.name, func_type);
     current_function = function;
     
     LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(ctx.context, function, "entry");
     LLVMPositionBuilderAtEnd(ctx.builder, entry);
 
     push_scope(st);
-    for(int i = 0; i < params_node->child_count; i++) {
-        codegen_variable_declaration(params_node->children[i]);
+    for(int i = 0; i < function_node.param_count; i++) {
+        ASTNode* param = function_node.params[i];
+        TypeInfo param_info = param->as.param.type;
+
+        LLVMTypeRef param_type = token_type_to_llvm_type(&ctx, param_info.base_type);
+        for (int j = 0; j < param_info.pointer_level; j++) {
+            param_type = LLVMPointerType(param_type, 0);
+        }
+        
+        LLVMValueRef alloca = LLVMBuildAlloca(ctx.builder, param_type, param->as.param.name);
+        
+        SymbolData data = {
+            .name = param->as.param.name,
+            .is_global = 0,
+            .info = param->as.param.type,
+            .alloc = alloca,
+        };
+        add_symbol(st, data);
     
         LLVMValueRef param_val = LLVMGetParam(function, i);
-        SymbolEntry* entry = lookup_symbol(st, params_node->children[i]->name);
-        if (entry && entry->symbol_data.alloc) {
-            LLVMBuildStore(ctx.builder, param_val, entry->symbol_data.alloc);
-        }
+        LLVMBuildStore(ctx.builder, param_val, alloca);
     }
 
-
-    ASTNode* func_block = node->children[FUNC_BODY];
-    if(func_block->type == AST_BLOCK) {
-        for(int i = 0; i < func_block->child_count; i++) {
-            codegen_statement(func_block->children[i]);
+    ASTNode* func_block = node->as.function.body;
+    if(func_block != NULL && func_block->type == AST_BLOCK) {
+        for(int i = 0; i < func_block->as.block.statement_count; i++) {
+            codegen_statement(func_block->as.block.statements[i]);
         }
     }
 
     pop_scope(st);
 
     if (LLVMVerifyFunction(function, LLVMPrintMessageAction)) {
-        printf("Codegen: Function verification failed for %s\n", node->name);
+        printf("Codegen: Function verification failed for %s\n", node->as.function.name);
     }
 }
 
@@ -831,6 +822,9 @@ void codegen_module_id(const char* name)
         return;
 
     char* module_id = malloc(strlen("namespace.") + strlen(name) + 1);
+    if (module_id == NULL)
+        return;
+
     sprintf(module_id, "namespace.%s", name);
     LLVMSetModuleIdentifier(ctx.module, module_id, strlen(module_id));
     free(module_id);
@@ -843,18 +837,20 @@ void codegen_program(ASTNode* node)
         printf("Codegen: Expected program node\n");
         return;
     }
+    ProgramNode program_node = node->as.program;
 
-    codegen_module_id(node->name);
+    codegen_module_id(program_node.name);
 
-    for (int i = 0; i < node->child_count; i++) {
+    for (int i = 0; i < program_node.struct_count; i++) {
+        codegen_struct_declaration(program_node.structs[i]);
+    }
 
-        ASTNode* child = node->children[i];
-        switch (child->type) {
-            case AST_FUNCTION:      codegen_function(child); break;
-            case AST_STRUCT:        codegen_struct_declaration(child); break;
-            case AST_VAR_DECL:      codegen_global_variable_declaration(child); break;
-            default: break;
-        }
+    for (int i = 0; i < program_node.global_count; i++) {
+        codegen_global_variable_declaration(program_node.globals[i]);
+    }
+
+    for (int i = 0; i < program_node.function_count; i++) {
+        codegen_function(program_node.functions[i]);
     }
 
     char* error = NULL;

@@ -1,57 +1,464 @@
 #include "parser.h"
-#include "lexer.h"
+#include "token.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 Parser parser;
 
-ASTNode* new_node(ASTNodeType type) {
+ASTNode* create_program_node(char* name) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
-            return NULL;
+        return NULL;
 
-    node->type = type;
-    node->name = NULL;
-    node->children = NULL;
-    node->child_count = 0;
-
-    node->type_info.base_type = TOK_VOID;
-    node->type_info.pointer_level = 0;
+    node->type = AST_PROGRAM;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.program.name = name;
+    node->as.program.functions = NULL;
+    node->as.program.function_count = 0;
+    node->as.program.structs = NULL;
+    node->as.program.struct_count = 0;
+    node->as.program.globals = NULL;
+    node->as.program.global_count = 0;
     return node;
 }
 
-void add_child(ASTNode* parent, ASTNode* child) {
-    if(parent == NULL)
-        return;
+ASTNode* create_function_node(char* name, TypeInfo return_type) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
 
-    if(child == NULL)
-        return;
-
-    parent->children = realloc(parent->children, sizeof(ASTNode*) * (parent->child_count + 1));
-    parent->children[parent->child_count++] = child;
+    node->type = AST_FUNCTION;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.function.name = name;
+    node->as.function.return_type = return_type;
+    node->as.function.params = NULL;
+    node->as.function.param_count = 0;
+    node->as.function.body = NULL;
+    return node;
 }
 
-void free_ast(ASTNode* node)
-{
-    if(node == NULL)
+ASTNode* create_block_node() {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_BLOCK;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.block.statements = NULL;
+    node->as.block.statement_count = 0;
+    return node;
+}
+
+ASTNode* create_param_node(char* name, TypeInfo type) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_PARAM_LIST;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.param.name = name;
+    node->as.param.type = type;
+    return node;
+}
+
+ASTNode* create_return_node(ASTNode* value) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_RETURN;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.return_stmt.value = value;
+    return node;
+}
+
+ASTNode* create_var_decl_node(char* name, TypeInfo type, ASTNode* initializer) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_VAR_DECL;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.var_decl.name = name;
+    node->as.var_decl.type = type;
+    node->as.var_decl.initializer = initializer;
+    return node;
+}
+
+ASTNode* create_assign_node(ASTNode* target, ASTNode* value) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_ASSIGN;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.assign.target = target;
+    node->as.assign.value = value;
+    return node;
+}
+
+ASTNode* create_if_node(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_IF;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.if_stmt.condition = condition;
+    node->as.if_stmt.then_branch = then_branch;
+    node->as.if_stmt.else_branch = else_branch;
+    return node;
+}
+
+ASTNode* create_for_node(ASTNode* init, ASTNode* condition, ASTNode* increment, ASTNode* body) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_FOR;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.for_stmt.init = init;
+    node->as.for_stmt.condition = condition;
+    node->as.for_stmt.update = increment;
+    node->as.for_stmt.body = body;
+    return node;
+}
+
+ASTNode* create_while_node(ASTNode* condition, ASTNode* body) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_WHILE;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.while_stmt.condition = condition;
+    node->as.while_stmt.body = body;
+    return node;
+}
+
+ASTNode* create_identifier_node(char* name) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_IDENTIFIER;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.identifier.name = name;
+    return node;
+}
+
+ASTNode* create_int_literal_node(long long value) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_INT_LITERAL;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.int_literal.value = value;
+    return node;
+}
+
+ASTNode* create_float_literal_node(float value) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_FLOAT_LITERAL;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.float_literal.value = value;
+    return node;
+}
+
+ASTNode* create_double_literal_node(double value) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_DOUBLE_LITERAL;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.double_literal.value = value;
+    return node;
+}
+
+ASTNode* create_string_literal_node(char* value) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_STRING_LITERAL;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.string_literal.value = value;
+    node->as.string_literal.length = strlen(value);
+    return node;
+}
+
+ASTNode* create_char_literal_node(char value) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_CHAR_LITERAL;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.char_literal.value = value;
+    return node;
+}
+
+ASTNode* create_func_call_node(char* name) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_FUNC_CALL;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.func_call.name = name;
+    node->as.func_call.args = NULL;
+    node->as.func_call.arg_count = 0;
+    return node;
+}
+
+ASTNode* create_unary_op_node(ASTNodeType op_type, ASTNode* operand) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = op_type;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.unary_op.operand = operand;
+    return node;
+}
+
+ASTNode* create_binary_op_node(BinaryOp op, ASTNode* left, ASTNode* right) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_BINARY_OP;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.binary_op.op = op;
+    node->as.binary_op.left = left;
+    node->as.binary_op.right = right;
+    return node;
+}
+
+ASTNode* create_cast_node(TypeInfo target_type, ASTNode* expr) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_CAST;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.cast.target_type = target_type;
+    node->as.cast.expr = expr;
+    return node;
+}
+
+ASTNode* create_member_access_node(ASTNode* object, char* member) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_MEMBER_ACCESS;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.member_access.object = object;
+    node->as.member_access.member = member;
+    return node;
+}
+
+ASTNode* create_struct_decl_node(char* name) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_STRUCT_DECL;
+    node->line = current_token()->line;
+    node->column = current_token()->column;
+    node->as.struct_decl.name = name;
+    node->as.struct_decl.members = NULL;
+    node->as.struct_decl.member_count = 0;
+    return node;
+}
+
+void add_param_to_function(ASTNode* func, ASTNode* param) {
+    if (func == NULL || param == NULL)
         return;
 
-    if(node->name != NULL) {
-        free(node->name);
-        node->name = NULL;        
+    func->as.function.params = realloc(func->as.function.params, sizeof(ASTNode*) * (func->as.function.param_count + 1));
+    func->as.function.params[func->as.function.param_count++] = param;
+}
+
+void add_member_to_struct(ASTNode* struct_decl, ASTNode* member) {
+    if (struct_decl == NULL || member == NULL)
+        return;
+    struct_decl->as.struct_decl.members = realloc(struct_decl->as.struct_decl.members, sizeof(ASTNode*) * (struct_decl->as.struct_decl.member_count + 1));
+    struct_decl->as.struct_decl.members[struct_decl->as.struct_decl.member_count++] = member;
+}
+
+void add_arg_to_func_call(ASTNode* func_call, ASTNode* arg) {
+    if (func_call == NULL || arg == NULL) 
+        return;
+
+    func_call->as.func_call.args = realloc(func_call->as.func_call.args, sizeof(ASTNode*) * (func_call->as.func_call.arg_count + 1));
+    func_call->as.func_call.args[func_call->as.func_call.arg_count++] = arg;
+}
+
+void add_function_to_program(ASTNode* program, ASTNode* function)
+{
+    if (program == NULL || function == NULL)
+        return;
+
+    program->as.program.functions = realloc(program->as.program.functions, sizeof(ASTNode*) * (program->as.program.function_count + 1));
+    program->as.program.functions[program->as.program.function_count++] = function;
+}
+
+void add_struct_to_program(ASTNode* program, ASTNode* struct_decl) {
+    if (program == NULL || struct_decl == NULL)
+        return;
+
+    program->as.program.structs = realloc(program->as.program.structs, sizeof(ASTNode*) * (program->as.program.struct_count + 1));
+    program->as.program.structs[program->as.program.struct_count++] = struct_decl;
+}
+
+void add_global_to_program(ASTNode* program, ASTNode* global) {
+    if (program == NULL || global == NULL)
+        return;
+
+    program->as.program.globals = realloc(program->as.program.globals, sizeof(ASTNode*) * (program->as.program.global_count + 1));
+    program->as.program.globals[program->as.program.global_count++] = global;
+}
+
+static void free_node_array(ASTNode** array, int count) {
+    if (array == NULL)
+        return;
+    
+    for (int i = 0; i < count; i++) {
+        free_ast(array[i]);
     }
 
-    for (int i = 0; i < node->child_count; i++) {
-        free_ast(node->children[i]);
-    }
+    free(array);
+}
 
-    if (node->children != NULL) 
-    {
-        free(node->children);
-        node->children = NULL;
+void free_ast(ASTNode* node) {
+    if (node == NULL)
+        return;
+    
+    switch (node->type) {
+        case AST_PROGRAM:
+            free(node->as.program.name);
+            free_node_array(node->as.program.functions, node->as.program.function_count);
+            free_node_array(node->as.program.structs, node->as.program.struct_count);
+            free_node_array(node->as.program.globals, node->as.program.global_count);
+            break;
+            
+        case AST_FUNCTION:
+            free(node->as.function.name);
+            free_node_array(node->as.function.params, node->as.function.param_count);
+            free_ast(node->as.function.body);
+            break;
+            
+        case AST_BLOCK:
+            free_node_array(node->as.block.statements, node->as.block.statement_count);
+            break;
+            
+        case AST_PARAM_LIST:
+            free(node->as.param.name);
+            break;
+            
+        case AST_RETURN:
+            free_ast(node->as.return_stmt.value);
+            break;
+            
+        case AST_VAR_DECL:
+            free(node->as.var_decl.name);
+            free_ast(node->as.var_decl.initializer);
+            break;
+            
+        case AST_ASSIGN:
+            free_ast(node->as.assign.target);
+            free_ast(node->as.assign.value);
+            break;
+            
+        case AST_IF:
+            free_ast(node->as.if_stmt.condition);
+            free_ast(node->as.if_stmt.then_branch);
+            free_ast(node->as.if_stmt.else_branch);
+            break;
+            
+        case AST_FOR:
+            free_ast(node->as.for_stmt.init);
+            free_ast(node->as.for_stmt.condition);
+            free_ast(node->as.for_stmt.update);
+            free_ast(node->as.for_stmt.body);
+            break;
+            
+        case AST_WHILE:
+            free_ast(node->as.while_stmt.condition);
+            free_ast(node->as.while_stmt.body);
+            break;
+            
+        case AST_IDENTIFIER:
+            free(node->as.identifier.name);
+            break;
+            
+        case AST_STRING_LITERAL:
+            free(node->as.string_literal.value);
+            break;
+            
+        case AST_FUNC_CALL:
+            free(node->as.func_call.name);
+            free_node_array(node->as.func_call.args, node->as.func_call.arg_count);
+            break;
+            
+        case AST_NEGATION:
+        case AST_DEREFERENCE:
+        case AST_ADDRESS_OF:
+            free_ast(node->as.unary_op.operand);
+            break;
+            
+        case AST_BINARY_OP:
+            free_ast(node->as.binary_op.left);
+            free_ast(node->as.binary_op.right);
+            break;
+            
+        case AST_CAST:
+            free_ast(node->as.cast.expr);
+            break;
+            
+        case AST_MEMBER_ACCESS:
+            free_ast(node->as.member_access.object);
+            free(node->as.member_access.member);
+            break;
+            
+        case AST_STRUCT_DECL:
+            free(node->as.struct_decl.name);
+            free_node_array(node->as.struct_decl.members, node->as.struct_decl.member_count);
+            break;
+            
+        default:
+            break;
     }
-
+    
     free(node);
 }
 
@@ -99,15 +506,15 @@ ASTNode* parse_compound_operators() {
         return NULL;
     }
 
-    TokenType op = current_token()->type;
-    ASTNodeType binary_op;
-    
-    switch(op) {
-        case TOK_ASSIGNMENT_ADDITION:       binary_op = AST_ADDITION; break;
-        case TOK_ASSIGNMENT_SUBTRACTION:    binary_op = AST_SUBTRACTION; break;
-        case TOK_ASSIGNMENT_MULTIPLICATION: binary_op = AST_MULTIPLICATION; break;
-        case TOK_ASSIGNMENT_DIVISION:       binary_op = AST_DIVISION; break;
-        case TOK_ASSIGNMENT_MODULO:         binary_op = AST_MODULO; break;
+    TokenType op_tok = current_token()->type;
+    BinaryOp op;
+
+    switch(op_tok) {
+        case TOK_ASSIGNMENT_ADDITION:       op = OP_ADD; break;
+        case TOK_ASSIGNMENT_SUBTRACTION:    op = OP_SUB; break;
+        case TOK_ASSIGNMENT_MULTIPLICATION: op = OP_MUL; break;
+        case TOK_ASSIGNMENT_DIVISION:       op = OP_DIV; break;
+        case TOK_ASSIGNMENT_MODULO:         op = OP_MOD; break;
         default: free_ast(lhs); return NULL;
     }
     
@@ -123,37 +530,20 @@ ASTNode* parse_compound_operators() {
         free_ast(rhs);
         return NULL;
     }
-
-    ASTNode* binary_node = new_node(binary_op);
-    if (binary_node == NULL) {
-        free_ast(lhs);
-        free_ast(rhs);
-        return NULL;
+    
+    ASTNode* lhs_copy = NULL;
+    if (lhs->type == AST_IDENTIFIER) {
+        lhs_copy = create_identifier_node(strdup(lhs->as.identifier.name));
     }
     
-    ASTNode* lhs_copy = new_node(AST_IDENTIFIER);
     if (lhs_copy == NULL) {
         free_ast(lhs);
         free_ast(rhs);
-        free_ast(binary_node);
-        return NULL;
-    }
-    lhs_copy->name = strdup(lhs->name);
-    lhs_copy->type_info = lhs->type_info;
-    
-    add_child(binary_node, lhs_copy);
-    add_child(binary_node, rhs);
-
-    ASTNode* assign_node = new_node(AST_ASSIGN);
-    if (assign_node == NULL) {
-        free_ast(lhs);
-        free_ast(binary_node);
         return NULL;
     }
     
-    add_child(assign_node, lhs);
-    add_child(assign_node, binary_node);
-
+    ASTNode* binary_node = create_binary_op_node(op, lhs_copy, rhs);
+    ASTNode* assign_node = create_assign_node(lhs, binary_node);
     return assign_node;
 }
 
@@ -179,23 +569,18 @@ ASTNode* parse_equality()
             return NULL;
         }
         
-        ASTNodeType node_type;
-        switch(op) 
-        {
-            case TOK_EQUAL:             node_type = AST_EQUAL; break;
-            case TOK_NOT_EQUAL:         node_type = AST_NOT_EQUAL; break;
-            case TOK_LESS:              node_type = AST_LESS; break;
-            case TOK_GREATER:           node_type = AST_GREATER; break;
-            case TOK_LESS_EQUALS:       node_type = AST_LESS_EQUAL; break;
-            case TOK_GREATER_EQUALS:    node_type = AST_GREATER_EQUAL; break;
-            default:                    node_type = AST_EXPRESSION; break;
+        BinaryOp binary_op;
+        switch(op) {
+            case TOK_EQUAL:          binary_op = OP_EQ; break;
+            case TOK_NOT_EQUAL:      binary_op = OP_NE; break;
+            case TOK_LESS:           binary_op = OP_LT; break;
+            case TOK_GREATER:        binary_op = OP_GT; break;
+            case TOK_LESS_EQUALS:    binary_op = OP_LE; break;
+            case TOK_GREATER_EQUALS: binary_op = OP_GE; break;
+            default:                 binary_op = OP_EQ; break;
         }
-
-        ASTNode* binary_node = new_node(node_type);
-        add_child(binary_node, left);
-        add_child(binary_node, right);
         
-        left = binary_node;
+        left = create_binary_op_node(binary_op, left, right);
     }
     
     return left;
@@ -218,19 +603,15 @@ ASTNode* parse_additive()
             return NULL;
         }
         
-        ASTNodeType node_type;
+        BinaryOp binary_op;
         switch(op) 
         {
-            case TOK_ADDITION:      node_type = AST_ADDITION; break;
-            case TOK_SUBTRACTION:   node_type = AST_SUBTRACTION; break;
-            default:                node_type = AST_EXPRESSION; break;
+            case TOK_ADDITION:      binary_op = OP_ADD; break;
+            case TOK_SUBTRACTION:   binary_op = OP_SUB; break;
+            default:                binary_op = OP_ADD; break;
         }
 
-        ASTNode* binary_node = new_node(node_type);
-        add_child(binary_node, left);
-        add_child(binary_node, right);
-        
-        left = binary_node;
+        left = create_binary_op_node(binary_op, left, right);
     }
     
     return left;
@@ -253,50 +634,45 @@ ASTNode* parse_multiplicative()
             return NULL;
         }
         
-        ASTNodeType node_type;
-        switch(op) {
-            case TOK_MULTIPLICATION:    node_type = AST_MULTIPLICATION; break;
-            case TOK_DIVISION:          node_type = AST_DIVISION; break;
-            case TOK_MODULO:            node_type = AST_MODULO; break;
-            default:                    node_type = AST_EXPRESSION; break;
+        BinaryOp binary_op;
+        switch(op)
+        {
+            case TOK_MULTIPLICATION: binary_op = OP_MUL; break;
+            case TOK_DIVISION:       binary_op = OP_DIV; break;
+            case TOK_MODULO:         binary_op = OP_MOD; break;
+            default:                 binary_op = OP_MUL; break;
         }
         
-        ASTNode* binary_node = new_node(node_type);
-        add_child(binary_node, left);
-        add_child(binary_node, right);
-        
-        left = binary_node;
+        left = create_binary_op_node(binary_op, left, right);
     }
     
     return left;
 }
 
-ASTNode* parse_negative_unary() {
+ASTNode* parse_negation() {
     advance();
     ASTNode* unary_expression = parse_unary();
     if (unary_expression == NULL) {
         return NULL;
     }
         
-    ASTNode* unary_minus_node = new_node(AST_UNARY_MINUS);
+    ASTNode* unary_minus_node = create_unary_op_node(AST_NEGATION, unary_expression);
     if (unary_minus_node == NULL) {
         free_ast(unary_expression);
         return NULL;
     }
-    add_child(unary_minus_node, unary_expression);
+
     return unary_minus_node;
 }
 
 ASTNode* parse_unary()
 {
-    if(check(TOK_SUBTRACTION))
-        return parse_negative_unary();
-
-    if (check(TOK_MULTIPLICATION))
-        return parse_dereference();
-
-    if (check(TOK_AMPERSAND)) 
-        return parse_address_of();
+    switch (current_token()->type) {
+        case TOK_SUBTRACTION:       return parse_negation();
+        case TOK_MULTIPLICATION:    return parse_dereference();
+        case TOK_AMPERSAND:         return parse_address_of();
+        default: break;
+    }
 
     if (is_casting())
         return parse_casting();
@@ -320,11 +696,13 @@ ASTNode* parse_postfix()
             return NULL;
         }
         
-        ASTNode* member_access = new_node(AST_MEMBER_ACCESS);
-        member_access->name = sv_to_owned_cstr(current_token()->lexeme);
+        ASTNode* member_access = create_member_access_node(node, sv_to_owned_cstr(current_token()->lexeme));
+        if (member_access == NULL) {
+            free_ast(node);
+            return NULL;
+        }
+
         advance();
-        
-        add_child(member_access, node);
         node = member_access;
     }
     
@@ -376,60 +754,60 @@ ASTNode* parse_primary_expression() {
 ASTNode* parse_number_literal() {
     if (!(check(TOK_NUMBER_INT) || check(TOK_NUMBER_DOUBLE) || check(TOK_NUMBER_FLOAT)))
         return NULL;
-
-    ASTNode* node = new_node(AST_EXPRESSION);
-    if (node == NULL)
-        return NULL;
     
-    node->name = sv_to_owned_cstr(current_token()->lexeme);
-    node->type_info.base_type = current_token()->type;
-    node->type_info.pointer_level = 0;
+    const char* number = sv_to_owned_cstr(current_token()->lexeme);
 
+    ASTNode* result = NULL;
+    switch (current_token()->type)
+    {
+        case TOK_NUMBER_INT: {
+            long long int_val = atoll(number);
+            result = create_int_literal_node(int_val);
+            break;
+        }
+        case TOK_NUMBER_FLOAT: {
+            float float_val = atof(number);
+            result = create_float_literal_node(float_val);
+            break;
+        }
+        case TOK_NUMBER_DOUBLE: {
+            double double_val = atof(number);
+            result = create_double_literal_node(double_val);
+            break;
+        }
+
+        default: break;
+    }
+    
     advance();
-    return node;
+    free((char*)number);
+    return result;
 }
 
 ASTNode* parse_string_literal() {
     if (!check(TOK_STRING_LITERAL))
         return NULL;
 
-    ASTNode* node = new_node(AST_STRING_LITERAL);
-    if (node == NULL)
-        return NULL;
-
-    node->name = sv_to_owned_cstr(current_token()->lexeme);
-    node->type_info.base_type = TOK_CHAR;
-    node->type_info.pointer_level = 1;
-
+    char* string = sv_to_owned_cstr(current_token()->lexeme);
     advance();
-    return node;
+
+    return create_string_literal_node(string);;
 }
 
 ASTNode* parse_char_literal() {
     if (!check(TOK_CHAR_LITERAL))
         return NULL;
 
-    ASTNode* node = new_node(AST_CHAR_LITERAL);
-    if (node == NULL)
-        return NULL;
-
-    node->name = sv_to_owned_cstr(current_token()->lexeme);
-    node->type_info.base_type = TOK_CHAR;
-    node->type_info.pointer_level = 0;
-
+    char ch = current_token()->lexeme.data[0];
     advance();
-    return node;
+
+    return create_char_literal_node(ch);
 }
 
 ASTNode* parse_identifier_expression()
 {
-    ASTNode* node = new_node(AST_IDENTIFIER);
-    if (!check(TOK_IDENTIFIER)) {
-        return NULL;
-    }
-
-    node->name = sv_to_owned_cstr(current_token()->lexeme);
-    advance(); 
+    ASTNode* node = create_identifier_node(sv_to_owned_cstr(current_token()->lexeme));
+    advance();
     return node;
 }
 
@@ -444,11 +822,12 @@ ASTNode* parse_dereference()
         return NULL;
     }
 
-    ASTNode* node = new_node(AST_DEREFERENCE);
-    if(node == NULL)
+    ASTNode* node = create_unary_op_node(AST_DEREFERENCE, expr);
+    if(node == NULL) {
+        free_ast(expr);
         return NULL;
-
-    add_child(node, expr);
+    }
+    
     return node;
 }
 
@@ -457,14 +836,13 @@ ASTNode* parse_address_of() {
         return NULL;
 
     advance();
-    ASTNode* node = new_node(AST_ADDRESS_OF);
     ASTNode* expr = parse_unary();
-    if (expr == NULL) {
-        free_ast(node);
+    ASTNode* node = create_unary_op_node(AST_ADDRESS_OF, expr);
+    if (node == NULL) {
+        free_ast(expr);
         return NULL;
     }
 
-    add_child(node, expr);
     return node;
 }
 
@@ -477,6 +855,9 @@ ASTNode* parse_function_call()
     }
 
     char* name = sv_to_owned_cstr(current_token()->lexeme);
+    if (name == NULL)
+        return NULL;
+
     advance();
 
     if(!match(TOK_LPAREN)) {
@@ -484,22 +865,21 @@ ASTNode* parse_function_call()
         return NULL;
     }
 
-    ASTNode* func_call_node = new_node(AST_FUNC_CALL);
-    if(func_call_node == NULL) {
+    ASTNode* func_call = create_func_call_node(name);
+    if (func_call == NULL) {
         free(name);
         return NULL;
     }
-    func_call_node->name = name;
 
     while (!check(TOK_RPAREN) && !check(TOK_EOF))
     {
         ASTNode* arg = parse_expression();
         if(arg == NULL) {
             printf("Parse error: expected expression in function argument\n");
-            return func_call_node;
+            return func_call;
         }
 
-        add_child(func_call_node, arg);
+        add_arg_to_func_call(func_call, arg);
 
         if (!match(TOK_COMMA)) {
             break;
@@ -508,10 +888,10 @@ ASTNode* parse_function_call()
 
     if(!match(TOK_RPAREN)) {
         printf("Parse error: expected ')' after function arguments\n");
-        return func_call_node;
+        return func_call;
     }
 
-    return func_call_node;
+    return func_call;
 }
 
 // float pi = 3.14f;
@@ -541,15 +921,12 @@ ASTNode* parse_casting()
         return NULL;
     }
 
-    ASTNode* cast_node = new_node(AST_CAST);
+    ASTNode* cast_node = create_cast_node(cast_type, expr);
     if(cast_node == NULL) {
         free_ast(expr);
         printf("Memory allocation failed\n");
         return NULL;
     }
-
-    cast_node->type_info = cast_type;
-    add_child(cast_node, expr);
 
     return cast_node;
 }
@@ -616,31 +993,24 @@ ASTNode* parse_while_loop() {
     if (!match(TOK_LPAREN))
         return NULL;
 
-    ASTNode* while_node = new_node(AST_WHILE);
-    if (while_node == NULL)
-        return NULL;
-
     ASTNode* condition = parse_expression();
     if(condition == NULL) {
-        free_ast(while_node);
+        free_ast(condition);
         return NULL;
     }
 
-    add_child(while_node, condition);
-
     if (!match(TOK_RPAREN)) {
-        free_ast(while_node);
+        free_ast(condition);
         return NULL;
     }
 
     ASTNode* body = parse_block();
     if(body == NULL) {
-        free_ast(while_node);
+        free_ast(condition);
         return NULL;
     }
 
-    add_child(while_node, body);
-    return while_node;
+    return create_while_node(condition, body);
 }
 
 ASTNode* parse_for_loop() {
@@ -650,55 +1020,66 @@ ASTNode* parse_for_loop() {
     if (!match(TOK_LPAREN))
         return NULL;
 
-    ASTNode* node_for = new_node(AST_FOR);
-    if(node_for == NULL)
-        return NULL;
+    ASTNode* init = NULL;
+    if (!check(TOK_SEMICOLON)) {
+        init = parse_loop_init();
+        if (init == NULL) {
+            return NULL;
+        }
+    }
 
-    ASTNode* init = parse_loop_init();
-    if (init == NULL) {
-        free_ast(node_for);
-        return NULL;
+    if (init == NULL || init->type != AST_VAR_DECL) {
+        if (!match(TOK_SEMICOLON)) {
+            free_ast(init);
+            return NULL;
+        }
     }
         
-    add_child (node_for, init);
+    ASTNode* condition = NULL;
+    if (!check(TOK_SEMICOLON)) {
+        condition = parse_expression();
+        if (condition == NULL) {
+            free_ast(init);
+            return NULL;
+        }
+    }
 
-    ASTNode* condition = parse_loop_condition();
-    if (condition == NULL) {
-        free_ast(node_for);
+    if (!match(TOK_SEMICOLON)) {
+        free_ast(init);
+        free_ast(condition);
         return NULL;
     }
 
-    add_child (node_for, condition);
-
-    ASTNode* update = parse_loop_update();
-    if(update == NULL) {
-        free_ast(node_for);
-        return NULL;
+    ASTNode* update = NULL;
+    if (!check(TOK_RPAREN)) {
+        update = parse_loop_update();
+        if (update == NULL) {
+            free_ast(init);
+            free_ast(condition);
+            return NULL;
+        }
     }
-
-    add_child(node_for, update);
 
     if(!match(TOK_RPAREN)) {
-        free_ast(node_for);
+        free_ast(init);
+        free_ast(condition);
+        free_ast(update);
         return NULL;
     }
 
     ASTNode* body = parse_block();
     if(body == NULL) {
-        free_ast(node_for);
+        free_ast(init);
+        free_ast(condition);
+        free_ast(update);
         return NULL;
     }
 
-    add_child(node_for, body);
-    return node_for;
+    return create_for_node(init, condition, update, body);
 }
 
 ASTNode* parse_loop_init() {
     ASTNode* init = NULL;
-
-    if (match(TOK_SEMICOLON)) {
-        return new_node(AST_EXPRESSION);
-    }
 
     if (is_type(current_token()->type))
         init = parse_variable_declaration();
@@ -717,63 +1098,36 @@ ASTNode* parse_loop_condition() {
         if(condition == NULL)
             return NULL;
     }
-    else
-        condition = new_node(AST_EXPRESSION);
     
-    if (!match(TOK_SEMICOLON))
+    if (!match(TOK_SEMICOLON)) {
+        free_ast(condition);
         return NULL;
+    }
 
     return condition;
 }
 
 ASTNode* parse_loop_update()
 {
-    if (check(TOK_RPAREN))
-        return new_node(AST_EXPRESSION);
-
     ASTNode* lhs = parse_expression();
     if (lhs == NULL)
-        return new_node(AST_EXPRESSION);
-
-    if (!match(TOK_ASSIGNMENT))
+        return NULL;
+    
+    if (!match(TOK_ASSIGNMENT)) {
         return lhs;
-
+    }
+    
     ASTNode* rhs = parse_expression();
     if (rhs == NULL) {
         free_ast(lhs);
-        return new_node(AST_EXPRESSION);
-    }
-
-    ASTNode* update = new_node(AST_ASSIGN);
-    add_child(update, lhs);
-    add_child(update, rhs);
-    return update;
-}
-
-
-ASTNode* parse_condition() {
-    if(!check(TOK_IF))
-        return NULL;
-
-    ASTNode* node_if = parse_if();
-    if(node_if == NULL)
-        return NULL;
-
-    if(!check(TOK_ELSE))
-        return node_if;
-
-    ASTNode* node_else = parse_else();
-    if(node_else == NULL) {
-        free_ast(node_if);
         return NULL;
     }
-
-    add_child(node_if, node_else);
-    return node_if;
+    
+    return create_assign_node(lhs, rhs);
 }
 
 ASTNode* parse_if() {
-    if(!match(TOK_IF)) 
+    if(!match(TOK_IF))
         return NULL;
 
     if(!match(TOK_LPAREN))
@@ -787,23 +1141,26 @@ ASTNode* parse_if() {
         free_ast(condition);
         return NULL;
     }
-
-    ASTNode* node_if = new_node(AST_IF);
-    if(node_if == NULL) {
+    
+    ASTNode* then_branch = parse_block();
+    if(then_branch == NULL) {
         free_ast(condition);
         return NULL;
     }
+    
+    if (!check(TOK_ELSE))
+        return create_if_node(condition, then_branch, NULL);
 
-    add_child(node_if, condition);
+    advance();
 
-    ASTNode* body = parse_block();
-    if(body == NULL) {
+    ASTNode* else_branch = parse_block();
+    if (else_branch == NULL) {
         free_ast(condition);
+        free_ast(then_branch);
         return NULL;
     }
-
-    add_child(node_if, body);
-    return node_if;
+    
+    return create_if_node(condition, then_branch, else_branch);
 }
 
 ASTNode* parse_else() {
@@ -830,9 +1187,8 @@ int is_compound_token(TokenType type) {
 ASTNode* parse_assignment() {
     if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION)) {
         Token* next = peek_token(1);
-        if (is_compound_token(next->type)) {
+        if (is_compound_token(next->type))
             return parse_compound_operators();
-        }
     }
 
     ASTNode* lhs = parse_expression();
@@ -849,121 +1205,131 @@ ASTNode* parse_assignment() {
 
     if (!match(TOK_ASSIGNMENT)) {
         printf("Parse error: expected '='\n");
+        free_ast(lhs);
         return NULL;
     }
 
     ASTNode* rhs = parse_expression();
     if (rhs == NULL) {
         printf("Parse error: expected expression on RHS\n");
+        free_ast(lhs);
         return NULL;
     }
 
     if (!match(TOK_SEMICOLON)) {
         printf("Parse error: expected ';'\n");
+        free_ast(lhs);
         free_ast(rhs);
         return NULL;
     }
 
-    ASTNode* assign_node = new_node(AST_ASSIGN);
-    add_child(assign_node, lhs);
-    add_child(assign_node, rhs);
-
-    return assign_node;
+    return create_assign_node(lhs, rhs);
 }
 
 ASTNode* parse_variable_declaration() {
     TypeInfo type = parse_type();
-
     if (current_token()->type != TOK_IDENTIFIER) {
         printf("Parse error: expected variable name\n");
         return NULL;
     }
-
-    ASTNode* node = new_node(AST_VAR_DECL);
-    if(node == NULL)
+    
+    char* name = sv_to_owned_cstr(current_token()->lexeme);
+    if (name == NULL)
         return NULL;
 
-    node->name = sv_to_owned_cstr(current_token()->lexeme);
-    node->type_info = type;
     advance();
 
-    if (match(TOK_ASSIGNMENT)) {
-        ASTNode* expr = parse_expression();
+    ASTNode* expr = NULL;
+    if (match(TOK_ASSIGNMENT))
+    {
+        expr = parse_expression();
         if(expr == NULL) {
-            free_ast(node);
+            free(name);
             return NULL;
         }
-        add_child(node, expr);
     }
     
     if (!match(TOK_SEMICOLON)) {
         printf("Parse error: expected ';'\n");
+        free(name);
+        free_ast(expr);
         return NULL;
     }
 
-    return node;
+    return create_var_decl_node(name, type, expr);
 }
 
 ASTNode* parse_struct_member() {
     TypeInfo type = parse_type();
-
-    if (current_token()->type != TOK_IDENTIFIER) {
+    
+    if (!check(TOK_IDENTIFIER))
+        return NULL;
+    
+    char* name = sv_to_owned_cstr(current_token()->lexeme);
+    advance();
+    
+    if (!match(TOK_SEMICOLON)) {
+        free(name);
         return NULL;
     }
+    
+    return create_var_decl_node(name, type, NULL);
+}
 
-    ASTNode* member = new_node(AST_VAR_DECL);
-    if(member == NULL)
+char* parse_struct_name() {
+    if (!match(TOK_STRUCT))
         return NULL;
-
-    member->name = sv_to_owned_cstr(current_token()->lexeme);
-    member->type_info = type;
+    
+    if (!check(TOK_IDENTIFIER))
+        return NULL;
+    
+    char* name = sv_to_owned_cstr(current_token()->lexeme);
     advance();
 
-    if (!match(TOK_SEMICOLON)) {
-        free_ast(member);
-        return NULL;
-    }
-
-    return member;
+    return name;
 }
 
 ASTNode* parse_struct_declaration() {
-    if (!match(TOK_STRUCT))
+    if (!check(TOK_STRUCT))
         return NULL;
-
-    if (!check(TOK_IDENTIFIER))
-        return NULL;
-
-    ASTNode* struct_node = new_node(AST_STRUCT);
-    if(struct_node == NULL)
-        return NULL;
-        
-    struct_node->name = sv_to_owned_cstr(current_token()->lexeme);
-    advance();
     
+    char* name = parse_struct_name();
+
     if (!match(TOK_LBRACE)) {
-        free_ast(struct_node);
+        free(name);
         return NULL;
     }
-
-    while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
-        if (is_type(current_token()->type))
-        {
+    
+    ASTNode* struct_decl = create_struct_decl_node(name);
+    if (struct_decl == NULL) {
+        free(name);
+        return NULL;
+    }
+    
+    while (!check(TOK_RBRACE) && !check(TOK_EOF))
+    {
+        if (is_type(current_token()->type)) {
             ASTNode* member = parse_struct_member();
-            if(member != NULL)
-                add_child(struct_node, member);
+            if(member == NULL)
+                continue;
+
+            add_member_to_struct(struct_decl, member);
         }
         else
             advance();
     }
-
-    if (!match(TOK_RBRACE))
+    
+    if (!match(TOK_RBRACE)) {
+        free_ast(struct_decl);
         return NULL;
+    }
 
-    if (!match(TOK_SEMICOLON))
+    if (!match(TOK_SEMICOLON)) {
+        free_ast(struct_decl);
         return NULL;
+    }
 
-    return struct_node;
+    return struct_decl;
 }
 
 ASTNode* parse_return() {
@@ -972,55 +1338,51 @@ ASTNode* parse_return() {
         return NULL;
     }
 
-    ASTNode* ret_node = new_node(AST_RETURN);
-    if(ret_node == NULL)
-        return ret_node;
-
+    ASTNode* expr = NULL;
     if (!check(TOK_SEMICOLON)) {
-        ASTNode* expr = parse_expression();
+        expr = parse_expression();
         if(expr == NULL) {
-            free_ast(ret_node);
             return NULL;
         }
-        add_child(ret_node, expr);
     }
 
     if (!match(TOK_SEMICOLON)) {
         printf("Parse error: expected ';' after return\n");
+        free_ast(expr);
         return NULL;
     }
-
-    return ret_node;
+    return create_return_node(expr);
 }
 
 ASTNode* parse_statement() {
-    if (check(TOK_RETURN))
-        return parse_return();
 
-    if (check(TOK_IF))
-        return parse_condition();
-
-    if (check(TOK_FOR))
-        return parse_for_loop();
-
-    if (check(TOK_WHILE))
-        return parse_while_loop();
-
-    if (check(TOK_LBRACE))
-        return parse_block();
-
-    if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION))
-        return parse_assignment();
+    switch (current_token()->type)
+    {
+        case TOK_RETURN:            return parse_return();
+        case TOK_IF:                return parse_if();
+        case TOK_FOR:               return parse_for_loop();
+        case TOK_WHILE:             return parse_while_loop();
+        case TOK_LBRACE:            return parse_block();
+        case TOK_IDENTIFIER:        return parse_assignment();
+        case TOK_MULTIPLICATION:    return parse_assignment();
+        case TOK_STRUCT:            return parse_struct_declaration();
+        default: break;
+    }
 
     if (is_type(current_token()->type))
         return parse_variable_declaration();
 
-    if (check(TOK_STRUCT))
-        return parse_struct_declaration();
-
     printf("Parse error: unknown statement\n");
     advance();
     return NULL; 
+}
+
+void add_statement_to_block(ASTNode* block, ASTNode* stmt) {
+    if (block == NULL || stmt == NULL)
+        return;
+
+    block->as.block.statements = realloc(block->as.block.statements, sizeof(ASTNode*) * (block->as.block.statement_count + 1));
+    block->as.block.statements[block->as.block.statement_count++] = stmt;
 }
 
 ASTNode* parse_block()
@@ -1030,19 +1392,21 @@ ASTNode* parse_block()
         return NULL;
     }
 
-    ASTNode* block = new_node(AST_BLOCK);
-    if(block == NULL)
+    ASTNode* block = create_block_node();
+    if (block == NULL)
         return NULL;
 
     while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
         ASTNode* stmt = parse_statement();
         if(stmt == NULL)
             continue;
-        add_child(block, stmt);
+
+        add_statement_to_block(block, stmt);
     }
 
     if (!match(TOK_RBRACE)) {
         printf("Parse error: expected '}'\n");
+        free(block);
         return NULL;
     }
     return block;
@@ -1060,123 +1424,119 @@ int is_func_declaration() {
     return (third_token->type == TOK_LPAREN);
 }
 
-ASTNode* parse_parameters() {
+ASTNode* parse_parameters(ASTNode* func)
+{
     if (!match(TOK_LPAREN)) {
         printf("Parse error: expected '('\n");
         return NULL;
     }
 
-    ASTNode* param_list = new_node(AST_PARAM_LIST);
-    if(param_list == NULL)
-        return NULL;
-
     while (!check(TOK_RPAREN) && !check(TOK_EOF)) 
     {
         if (!is_type(current_token()->type)) {
             printf("Parse error: expected type in parameter list\n");
-            free_ast(param_list);
             return NULL;
         }
 
         TypeInfo type = parse_type();
-
         if (!check(TOK_IDENTIFIER)) {
             printf("Parse error: expected parameter name\n");
-            free_ast(param_list);
             return NULL;
         }
+
         char* param_name = sv_to_owned_cstr(current_token()->lexeme);
+        if(param_name == NULL)
+            return NULL;
+
         advance();
 
-        ASTNode* param_node = new_node(AST_VAR_DECL);
-        if(param_node == NULL)
-        {
-            free_ast(param_list);
-        }
+        ASTNode* param = create_param_node(param_name, type);
+        if (param == NULL)
+            return NULL;
 
-        param_node->name = param_name;
-        param_node->type_info = type;
+        add_param_to_function(func, param);
 
-        add_child(param_list, param_node);
-
-        if (!match(TOK_COMMA)) {
+        if (!match(TOK_COMMA))
             break;
-        }
     }
 
     if (!match(TOK_RPAREN)) {
         printf("Parse error: expected ')'\n");
-        free_ast(param_list);
         return NULL;
     }
 
-    return param_list;
+    return func;
 }
 
 ASTNode* parse_function()
 {
     TypeInfo return_type = parse_type();
-
     if (!check(TOK_IDENTIFIER)) {
         printf("Parse error: expected function name\n");
         return NULL;
     }
 
-    ASTNode* func = new_node(AST_FUNCTION);
-    if(func == NULL)
+    char* name = sv_to_owned_cstr(current_token()->lexeme);
+    if(name == NULL)
         return NULL;
 
-    func->type_info = return_type;
-    func->name = sv_to_owned_cstr(current_token()->lexeme);
     advance();
 
-    ASTNode* params = parse_parameters();
-    if (params == NULL) {
+    ASTNode* func = create_function_node(name, return_type);
+    if (func == NULL) {
+        free(name);
+        return NULL;
+    }
+    
+    if (parse_parameters(func) == NULL) {
         free_ast(func);
         return NULL;
     }
-
-    add_child(func, params);
-
+    
     ASTNode* body = parse_block();
     if(body == NULL) {
         free_ast(func);
         return NULL;
     }
 
-    add_child(func, body);
+    func->as.function.body = body;
     return func;
 }
 
-ASTNode* parse_namespace(ASTNodeType type)
+/* namespace main */
+char* parse_namespace_name()
 {
-    if(!match(TOK_NAMESPACE))
-    {
+    if (!match(TOK_NAMESPACE)) {
         printf("Parse error: expected 'namespace'\n");
         return NULL;
     }
-
-    char* namespace_name = sv_to_owned_cstr(current_token()->lexeme);
-    if (!match(TOK_IDENTIFIER)) {
-        free(namespace_name);
+    
+    if (!check(TOK_IDENTIFIER)) {
         printf("Parse error: expected namespace name\n");
         return NULL;
     }
+    
+    char* namespace_name = sv_to_owned_cstr(current_token()->lexeme);
+    advance();
 
-    ASTNode* namespace_node = new_node(type);
-    if (namespace_node != NULL)
-        namespace_node->name = namespace_name;
-
-    return namespace_node;
+    return namespace_name;
 }
 
 ASTNode* parse_program() {
-    ASTNode* program = parse_namespace(AST_PROGRAM);
-    if(program == NULL)
+    if(!check(TOK_NAMESPACE))
         return NULL;
+
+    char* namespace_name = parse_namespace_name();
 
     if (!match(TOK_LBRACE)) {
         printf("Parse error: expected '{'\n");
+        free(namespace_name);
+        return NULL;
+    }
+    
+    ASTNode* program = create_program_node(namespace_name);
+    if (program == NULL) {
+        free(namespace_name);
         return NULL;
     }
 
@@ -1185,19 +1545,25 @@ ASTNode* parse_program() {
         if (is_func_declaration())
         {
             ASTNode* func = parse_function();
-            if(func != NULL)
-                add_child(program, func);
+            if(func == NULL)
+                continue;
+
+            add_function_to_program(program, func);
         }
         else if (check(TOK_STRUCT)) {
             ASTNode* struct_node = parse_struct_declaration();
-            if(struct_node != NULL)
-                add_child(program, struct_node);
+            if(struct_node == NULL)
+                continue;
+
+            add_struct_to_program(program, struct_node);
         }
         else if (is_type(current_token()->type))
         {
             ASTNode* var_decl = parse_variable_declaration();
-            if(var_decl != NULL)
-                add_child(program, var_decl);
+            if(var_decl == NULL)
+                continue;
+
+            add_global_to_program(program, var_decl);
         }
         else
         {
@@ -1239,61 +1605,225 @@ Token* peek_token(int offset)
 void print_ast(ASTNode* node, int level) 
 {
     if(node == NULL) return;
-    for (int i = 0; i < level; i++) printf("  ");
-
+    
+    for (int i = 0; i < level; i++) 
+        printf("  ");
+    
     switch (node->type) {
-        case AST_PROGRAM:       printf("Program (namespace %s)\n", node->name ? node->name : "(unnamed)"); break;
-        case AST_FUNCTION:      printf("Function (return type %s, name %s)\n", token_type_name(node->type_info.base_type), node->name); break;
-        case AST_PARAM_LIST:    printf("Parameter List\n"); break;
-        case AST_BLOCK:         printf("Block\n"); break;
-        case AST_RETURN:        printf("Return\n"); break;
-        case AST_ASSIGN:        printf("Assign\n"); break;
-        case AST_VAR_DECL:      printf("VariableDecl(type %s, name %s, level %d)\n", token_type_name(node->type_info.base_type), node->name, node->type_info.pointer_level); break;
-        case AST_DEREFERENCE:   printf("Dereference\n"); break;
-        case AST_ADDRESS_OF:    printf("AddressOf\n"); break;
-        case AST_FUNC_CALL:     printf("Function call(name: %s)\n", node->name); break;
-        case AST_IDENTIFIER:    printf("Identifier(%s)\n", node->name); break;
-        case AST_UNARY_MINUS:   printf("Unary minus\n"); break;
-        case AST_ADDITION:      printf("Addition\n"); break;
-        case AST_SUBTRACTION:   printf("Subtraction\n"); break;
-        case AST_MULTIPLICATION:printf("Multiplication\n"); break;
-        case AST_DIVISION:      printf("Division\n"); break;
-        case AST_MODULO:        printf("Modulo\n"); break;
-        case AST_EQUAL:         printf("Equal\n"); break;
-        case AST_NOT_EQUAL:     printf("NotEqual\n"); break;
-        case AST_IF:            printf("If\n"); break;
-        case AST_FOR:           printf("For\n"); break;
-        case AST_WHILE:         printf("While\n"); break;
-        case AST_LESS:          printf("Less\n"); break;
-        case AST_GREATER:       printf("Greater\n"); break;
-        case AST_LESS_EQUAL:    printf("Less Equal\n"); break;
-        case AST_GREATER_EQUAL: printf("Greater Equal\n"); break;
-        case AST_STRUCT:        printf("Struct %s\n", node->name); break;
-        case AST_MEMBER_ACCESS: printf("MemberAccess(.%s)\n", node->name); break;
+        case AST_PROGRAM:
+            printf("Program (namespace %s)\n", node->as.program.name ? node->as.program.name : "(unnamed)");
+            for (int i = 0; i < node->as.program.struct_count; i++)
+                print_ast(node->as.program.structs[i], level + 1);
+            for (int i = 0; i < node->as.program.global_count; i++)
+                print_ast(node->as.program.globals[i], level + 1);
+            for (int i = 0; i < node->as.program.function_count; i++)
+                print_ast(node->as.program.functions[i], level + 1);
+            break;
+            
+        case AST_FUNCTION:
+            printf("Function (return type %s, name %s)\n", 
+                token_type_name(node->as.function.return_type.base_type), 
+                node->as.function.name);
+            for (int i = 0; i < node->as.function.param_count; i++)
+                print_ast(node->as.function.params[i], level + 1);
+            if (node->as.function.body)
+                print_ast(node->as.function.body, level + 1);
+            break;
+            
+        case AST_PARAM_LIST:
+            printf("Parameter (type %s, name %s, level %d)\n", 
+                token_type_name(node->as.param.type.base_type),
+                node->as.param.name,
+                node->as.param.type.pointer_level);
+            break;
+            
+        case AST_BLOCK:
+            printf("Block\n");
+            for (int i = 0; i < node->as.block.statement_count; i++)
+                print_ast(node->as.block.statements[i], level + 1);
+            break;
+            
+        case AST_RETURN:
+            printf("Return\n");
+            if (node->as.return_stmt.value)
+                print_ast(node->as.return_stmt.value, level + 1);
+            break;
+            
+        case AST_ASSIGN:
+            printf("Assign\n");
+            if (node->as.assign.target)
+                print_ast(node->as.assign.target, level + 1);
+            if (node->as.assign.value)
+                print_ast(node->as.assign.value, level + 1);
+            break;
+            
+        case AST_VAR_DECL:
+            printf("VariableDecl(type %s, name %s, level %d)\n", 
+                token_type_name(node->as.var_decl.type.base_type), 
+                node->as.var_decl.name, 
+                node->as.var_decl.type.pointer_level);
+            if (node->as.var_decl.initializer)
+                print_ast(node->as.var_decl.initializer, level + 1);
+            break;
+            
+        case AST_DEREFERENCE:
+            printf("Dereference\n");
+            if (node->as.unary_op.operand)
+                print_ast(node->as.unary_op.operand, level + 1);
+            break;
+            
+        case AST_ADDRESS_OF:
+            printf("AddressOf\n");
+            if (node->as.unary_op.operand)
+                print_ast(node->as.unary_op.operand, level + 1);
+            break;
+            
+        case AST_FUNC_CALL:
+            printf("Function call(name: %s, args: %d)\n", 
+                node->as.func_call.name,
+                node->as.func_call.arg_count);
+            for (int i = 0; i < node->as.func_call.arg_count; i++)
+                print_ast(node->as.func_call.args[i], level + 1);
+            break;
+            
+        case AST_IDENTIFIER:
+            printf("Identifier(%s)\n", node->as.identifier.name);
+            break;
+            
+        case AST_NEGATION:
+            printf("Unary minus\n");
+            if (node->as.unary_op.operand)
+                print_ast(node->as.unary_op.operand, level + 1);
+            break;
+            
+        case AST_BINARY_OP: {
+            const char* op_name = NULL;
+            switch (node->as.binary_op.op) {
+                case OP_ADD: op_name = "Addition"; break;
+                case OP_SUB: op_name = "Subtraction"; break;
+                case OP_MUL: op_name = "Multiplication"; break;
+                case OP_DIV: op_name = "Division"; break;
+                case OP_MOD: op_name = "Modulo"; break;
+                case OP_EQ:  op_name = "Equal"; break;
+                case OP_NE:  op_name = "NotEqual"; break;
+                case OP_LT:  op_name = "Less"; break;
+                case OP_GT:  op_name = "Greater"; break;
+                case OP_LE:  op_name = "LessEqual"; break;
+                case OP_GE:  op_name = "GreaterEqual"; break;
+                default:     op_name = "Unknown"; break;
+            }
+            printf("BinaryOp(%s)\n", op_name);
+            if (node->as.binary_op.left)
+                print_ast(node->as.binary_op.left, level + 1);
+            if (node->as.binary_op.right)
+                print_ast(node->as.binary_op.right, level + 1);
+            break;
+        }
+            
+        case AST_IF:
+            printf("If\n");
+            if (node->as.if_stmt.condition) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Condition:\n");
+                print_ast(node->as.if_stmt.condition, level + 2);
+            }
+            if (node->as.if_stmt.then_branch) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Then:\n");
+                print_ast(node->as.if_stmt.then_branch, level + 2);
+            }
+            if (node->as.if_stmt.else_branch) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Else:\n");
+                print_ast(node->as.if_stmt.else_branch, level + 2);
+            }
+            break;
+            
+        case AST_FOR:
+            printf("For\n");
+            if (node->as.for_stmt.init) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Init:\n");
+                print_ast(node->as.for_stmt.init, level + 2);
+            }
+            if (node->as.for_stmt.condition) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Condition:\n");
+                print_ast(node->as.for_stmt.condition, level + 2);
+            }
+            if (node->as.for_stmt.update) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Increment:\n");
+                print_ast(node->as.for_stmt.update, level + 2);
+            }
+            if (node->as.for_stmt.body) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Body:\n");
+                print_ast(node->as.for_stmt.body, level + 2);
+            }
+            break;
+            
+        case AST_WHILE:
+            printf("While\n");
+            if (node->as.while_stmt.condition) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Condition:\n");
+                print_ast(node->as.while_stmt.condition, level + 2);
+            }
+            if (node->as.while_stmt.body) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Body:\n");
+                print_ast(node->as.while_stmt.body, level + 2);
+            }
+            break;
+            
+        case AST_STRUCT_DECL:
+            printf("Struct %s\n", node->as.struct_decl.name);
+            for (int i = 0; i < node->as.struct_decl.member_count; i++)
+                print_ast(node->as.struct_decl.members[i], level + 1);
+            break;
+            
+        case AST_MEMBER_ACCESS:
+            printf("MemberAccess(.%s)\n", node->as.member_access.member);
+            if (node->as.member_access.object)
+                print_ast(node->as.member_access.object, level + 1);
+            break;
+            
         case AST_CAST:
-            printf("Cast(to %s", token_type_name(node->type_info.base_type));
-            if (node->type_info.pointer_level > 0) {
-                for (int i = 0; i < node->type_info.pointer_level; i++)
+            printf("Cast(to %s", token_type_name(node->as.cast.target_type.base_type));
+            if (node->as.cast.target_type.pointer_level > 0) {
+                for (int i = 0; i < node->as.cast.target_type.pointer_level; i++)
                     printf("*");
             }
             printf(")\n");
+            if (node->as.cast.expr)
+                print_ast(node->as.cast.expr, level + 1);
             break;
-        case AST_STRING_LITERAL:printf("StringLiteral(\"%s\")\n", node->name ? node->name : ""); break;            
-        case AST_CHAR_LITERAL:  printf("CharLiteral('%s')\n", node->name ? node->name : ""); break;
-        case AST_EXPRESSION:
-            if (node->name != NULL) {
-                switch (node->type_info.base_type) {
-                    case TOK_NUMBER_INT:    printf("Number(int: %s)\n", node->name); break;
-                    case TOK_NUMBER_FLOAT:  printf("Number(float: %s)\n", node->name); break;
-                    case TOK_NUMBER_DOUBLE: printf("Number(double: %s)\n", node->name); break;
-                    default:                printf("Number(%s)\n", node->name); break;
-                }
-            }
+            
+        case AST_STRING_LITERAL:
+            printf("StringLiteral(\"%s\", length: %d)\n", 
+                node->as.string_literal.value ? node->as.string_literal.value : "",
+                node->as.string_literal.length);
             break;
-        default:                printf("UnknownNodeType(%d)\n", node->type); break;
-    }
-
-    for (int i = 0; i < node->child_count; i++) {
-        print_ast(node->children[i], level + 1);
+            
+        case AST_CHAR_LITERAL:
+            printf("CharLiteral('%c')\n", node->as.char_literal.value);
+            break;
+            
+        case AST_INT_LITERAL:
+            printf("IntLiteral(%lld)\n", node->as.int_literal.value);
+            break;
+            
+        case AST_FLOAT_LITERAL:
+            printf("FloatLiteral(%f)\n", node->as.float_literal.value);
+            break;
+            
+        case AST_DOUBLE_LITERAL:
+            printf("DoubleLiteral(%lf)\n", node->as.double_literal.value);
+            break;
+            
+        default:
+            printf("UnknownNodeType(%d)\n", node->type);
+            break;
     }
 }

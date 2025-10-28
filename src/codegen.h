@@ -29,7 +29,7 @@ LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
 
 void codegen_struct_declaration(ASTNode* node);
 
-void codegen_condition(ASTNode* node);
+void codegen_if(ASTNode* node);
 void codegen_then_block(ASTNode* node_block, LLVMBasicBlockRef mergeBB);
 void codegen_else_block(ASTNode* node_else, LLVMBasicBlockRef mergeBB);
 
@@ -71,7 +71,7 @@ void codegen_variable_declaration(ASTNode* node);
 void codegen_global_variable_declaration(ASTNode* node);
 void codegen_assign(ASTNode* node);
 
-LLVMValueRef codegen_unary_minus(ASTNode* node);
+LLVMValueRef codegen_negation(ASTNode* node);
 LLVMValueRef codegen_expression(ASTNode* node);
 LLVMValueRef codegen_dereference(ASTNode* node);
 LLVMValueRef codegen_address_of(ASTNode* node);
