@@ -1,49 +1,153 @@
 #ifndef AST_LAYOUT_H
 #define AST_LAYOUT_H
 
-typedef enum {
-    FUNC_PARAMS = 0,
-    FUNC_BODY = 1
-} ASTFuncChild;
+#include "lexer.h"
+
+typedef struct ASTNode ASTNode;
 
 typedef enum {
-    ASSIGN_TARGET = 0,
-    ASSIGN_VALUE = 1
-} ASTAssignChild;
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
+    OP_MOD,
+    OP_EQ,
+    OP_NE,
+    OP_LT,
+    OP_GT,
+    OP_LE,
+    OP_GE
+} BinaryOp;
 
-typedef enum {
-    VAR_DECL_INITIALIZER = 0
-} ASTVarDeclChild;
+typedef struct TypeInfo {
+    TokenType base_type;
+    int pointer_level;
+} TypeInfo;
 
-typedef enum {
-    UNARY_OPERAND = 0
-} ASTUnaryChild;
 
-typedef enum {
-    BIN_LEFT = 0,
-    BIN_RIGHT = 1
-} ASTBinaryChild;
+typedef struct {
+    char* name;
 
-typedef enum {
-    IF_CONDITION = 0,
-    IF_THEN_BLOCK = 1,
-    IF_ELSE_BLOCK = 2
-} ASTIfChild;
+    ASTNode** functions;
+    int function_count;
 
-typedef enum {
-    FOR_INIT = 0,
-    FOR_CONDITION = 1,
-    FOR_UPDATE = 2,
-    FOR_BLOCK = 3
-} ASTForChild;
+    ASTNode** structs;
+    int struct_count;
+    
+    ASTNode** globals;
+    int global_count;
+} ProgramNode;
 
-typedef enum {
-    WHILE_CONDITION = 0,
-    WHILE_BLOCK = 1
-} ASTWhileChild;
+typedef struct {
+    char* name;
+    TypeInfo return_type;
 
-typedef enum {
-    RETURN_VALUE = 0
-} ASTReturnChild;
+    ASTNode** params;
+    int param_count;
+
+    ASTNode* body;
+} FunctionNode;
+
+typedef struct {
+    ASTNode** statements;
+    int statement_count;
+} BlockNode;
+
+typedef struct {
+    char* name;
+    TypeInfo type;
+} ParamNode;
+
+typedef struct {
+    ASTNode* value;
+} ReturnNode;
+
+typedef struct {
+    char* name;
+    TypeInfo type;
+    ASTNode* initializer;
+} VarDeclNode;
+
+typedef struct {
+    ASTNode* target;
+    ASTNode* value;
+} AssignNode;
+
+typedef struct {
+    ASTNode* condition;
+    ASTNode* then_branch;
+    ASTNode* else_branch;
+} IfNode;
+
+typedef struct {
+    ASTNode* init;
+    ASTNode* condition;
+    ASTNode* update;
+    ASTNode* body;
+} ForNode;
+
+typedef struct {
+    ASTNode* condition;
+    ASTNode* body;
+} WhileNode;
+
+typedef struct {
+    char* name;
+} IdentifierNode;
+
+typedef struct {
+    long long value;
+} IntLiteralNode;
+
+typedef struct {
+    float value;
+} FloatLiteralNode;
+
+typedef struct {
+    double value;
+} DoubleLiteralNode;
+
+typedef struct {
+    char* value;
+    int length;
+} StringLiteralNode;
+
+typedef struct {
+    char value;
+} CharLiteralNode;
+
+typedef struct {
+    char* name;
+    
+    ASTNode** args;
+    int arg_count;
+} FuncCallNode;
+
+typedef struct {
+    ASTNode* operand;
+} UnaryOpNode;
+
+typedef struct {
+    BinaryOp op;
+    ASTNode* left;
+    ASTNode* right;
+} BinaryOpNode;
+
+typedef struct {
+    TypeInfo target_type;
+    ASTNode* expr;
+} CastNode;
+
+typedef struct {
+    ASTNode* object;
+    char* member;
+} MemberAccessNode;
+
+typedef struct {
+    char* name;
+
+    ASTNode** members;
+    int member_count;
+} StructDeclNode;
 
 #endif
