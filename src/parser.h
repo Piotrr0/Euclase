@@ -26,11 +26,10 @@ typedef enum {
 
     AST_EXPRESSION,
     AST_FUNC_CALL,
-    AST_DEREFERENCE,
-    AST_ADDRESS_OF,
     AST_CAST,
-    AST_NEGATION,
+
     AST_BINARY_OP,
+    AST_UNARY_OP,
     
     AST_STRUCT_DECL,
     AST_MEMBER_ACCESS
@@ -96,7 +95,7 @@ ASTNode* create_double_literal_node(double value);
 ASTNode* create_string_literal_node(char* value);
 ASTNode* create_char_literal_node(char value);
 ASTNode* create_func_call_node(char* name);
-ASTNode* create_unary_op_node(ASTNodeType op_type, ASTNode* operand);
+ASTNode* create_unary_op_node(UnaryOP op, ASTNode* operand);
 ASTNode* create_binary_op_node(BinaryOp op, ASTNode* left, ASTNode* right);
 ASTNode* create_cast_node(TypeInfo target_type, ASTNode* expr);
 ASTNode* create_member_access_node(ASTNode* object, char* member);

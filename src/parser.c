@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "ast_layout.h"
 #include "token.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -234,12 +235,12 @@ ASTNode* create_func_call_node(char* name) {
     return node;
 }
 
-ASTNode* create_unary_op_node(ASTNodeType op_type, ASTNode* operand) {
+ASTNode* create_unary_op_node(UnaryOP op, ASTNode* operand) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
-    node->type = op_type;
+    node->type = AST_UNARY_OP;
     node->line = current_token()->line;
     node->column = current_token()->column;
     node->as.unary_op.operand = operand;
@@ -430,9 +431,7 @@ void free_ast(ASTNode* node) {
             free_node_array(node->as.func_call.args, node->as.func_call.arg_count);
             break;
             
-        case AST_NEGATION:
-        case AST_DEREFERENCE:
-        case AST_ADDRESS_OF:
+        case AST_UNARY_OP:
             free_ast(node->as.unary_op.operand);
             break;
             
@@ -501,7 +500,7 @@ ASTNode* parse_compound_operators() {
     if (lhs == NULL)
         return NULL;
 
-    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_DEREFERENCE) {
+    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_MEMBER_ACCESS && lhs->type != AST_UNARY_OP && lhs->as.unary_op.op == OP_DEREF) {
         free_ast(lhs);
         return NULL;
     }
@@ -656,7 +655,7 @@ ASTNode* parse_negation() {
         return NULL;
     }
         
-    ASTNode* unary_minus_node = create_unary_op_node(AST_NEGATION, unary_expression);
+    ASTNode* unary_minus_node = create_unary_op_node(OP_NEG, unary_expression);
     if (unary_minus_node == NULL) {
         free_ast(unary_expression);
         return NULL;
@@ -822,7 +821,7 @@ ASTNode* parse_dereference()
         return NULL;
     }
 
-    ASTNode* node = create_unary_op_node(AST_DEREFERENCE, expr);
+    ASTNode* node = create_unary_op_node(OP_DEREF, expr);
     if(node == NULL) {
         free_ast(expr);
         return NULL;
@@ -837,7 +836,7 @@ ASTNode* parse_address_of() {
 
     advance();
     ASTNode* expr = parse_unary();
-    ASTNode* node = create_unary_op_node(AST_ADDRESS_OF, expr);
+    ASTNode* node = create_unary_op_node(OP_ADDR, expr);
     if (node == NULL) {
         free_ast(expr);
         return NULL;
@@ -1197,7 +1196,7 @@ ASTNode* parse_assignment() {
         return NULL;
     }
 
-    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_DEREFERENCE && lhs->type != AST_MEMBER_ACCESS) {
+    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_MEMBER_ACCESS && lhs->type != AST_UNARY_OP && lhs->as.unary_op.op == OP_DEREF) {
         printf("Parse error: invalid lvalue\n");
         free_ast(lhs);
         return NULL;
@@ -1665,19 +1664,21 @@ void print_ast(ASTNode* node, int level)
             if (node->as.var_decl.initializer)
                 print_ast(node->as.var_decl.initializer, level + 1);
             break;
-            
-        case AST_DEREFERENCE:
-            printf("Dereference\n");
-            if (node->as.unary_op.operand)
-                print_ast(node->as.unary_op.operand, level + 1);
-            break;
-            
-        case AST_ADDRESS_OF:
-            printf("AddressOf\n");
-            if (node->as.unary_op.operand)
-                print_ast(node->as.unary_op.operand, level + 1);
-            break;
-            
+
+        case AST_UNARY_OP: {
+                const char* op_name = NULL;
+                switch (node->as.unary_op.op) {
+                    case OP_DEREF: op_name = "Dereference"; break;
+                    case OP_ADDR: op_name = "Address Of"; break;
+                    case OP_NEG: op_name = "Negation"; break;
+                    default:     op_name = "Unknown"; break;
+                }
+                printf("BinaryOp(%s)\n", op_name);
+                if (node->as.unary_op.operand)
+                    print_ast(node->as.unary_op.operand, level + 1);
+                break;
+            }
+
         case AST_FUNC_CALL:
             printf("Function call(name: %s, args: %d)\n", 
                 node->as.func_call.name,
@@ -1688,12 +1689,6 @@ void print_ast(ASTNode* node, int level)
             
         case AST_IDENTIFIER:
             printf("Identifier(%s)\n", node->as.identifier.name);
-            break;
-            
-        case AST_NEGATION:
-            printf("Unary minus\n");
-            if (node->as.unary_op.operand)
-                print_ast(node->as.unary_op.operand, level + 1);
             break;
             
         case AST_BINARY_OP: {

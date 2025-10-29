@@ -1,4 +1,5 @@
 #include "codegen.h"
+#include "ast_layout.h"
 #include "parser.h"
 #include "token.h"
 #include <llvm-c/Core.h>
@@ -460,7 +461,10 @@ LLVMValueRef generate_cast_instruction(LLVMValueRef value, LLVMTypeRef from_type
 }
 
 LLVMValueRef codegen_negation(ASTNode* node) {
-    if (node->type != AST_NEGATION)
+    if(node->as.unary_op.op != OP_NEG)
+        return NULL;
+
+    if(node->as.unary_op.operand == NULL)
         return NULL;
 
     UnaryOpNode negation_node =node->as.unary_op;
@@ -480,6 +484,22 @@ LLVMValueRef codegen_negation(ASTNode* node) {
     return NULL;
 }
 
+LLVMValueRef codegen_unary_op(ASTNode* node) {
+    if (node->type != AST_UNARY_OP)
+        return NULL;
+
+    UnaryOpNode unary_node = node->as.unary_op;
+
+    switch (unary_node.op) {
+        case OP_ADDR:   return codegen_address_of(node->as.unary_op.operand); 
+        case OP_DEREF:  return codegen_dereference(node->as.unary_op.operand);
+        case OP_NEG:    return codegen_negation(node->as.unary_op.operand);
+        default: break;
+    }
+
+    return NULL;
+}
+
 LLVMValueRef codegen_expression(ASTNode *node) {
     if (node == NULL) 
         return NULL;
@@ -492,10 +512,8 @@ LLVMValueRef codegen_expression(ASTNode *node) {
         case AST_CHAR_LITERAL:  return codegen_char_literal(node);
         case AST_IDENTIFIER:    return codegen_variable_load(node->as.identifier.name);
         case AST_FUNC_CALL:     return codegen_function_call(node);
-        case AST_ADDRESS_OF:    return codegen_address_of(node);
-        case AST_DEREFERENCE:   return codegen_dereference(node);
         case AST_CAST:          return codegen_cast(node);
-        case AST_NEGATION:      return codegen_negation(node);
+        case AST_UNARY_OP:      return codegen_unary_op(node);
         case AST_BINARY_OP:     return codegen_binary_op(node);
 
         default:
@@ -629,11 +647,11 @@ void codegen_struct_declaration(ASTNode* node) {
 
 LLVMValueRef codegen_dereference(ASTNode* node)
 {
-    if (node->type != AST_DEREFERENCE)
-        return NULL;
-
     UnaryOpNode dereference_node = node->as.unary_op;
-
+    
+    if (dereference_node.op != OP_DEREF)
+        return NULL;
+    
     if (dereference_node.operand == NULL)
         return NULL;
 
@@ -673,7 +691,7 @@ LLVMValueRef codegen_dereference(ASTNode* node)
 
 LLVMValueRef codegen_address_of(ASTNode* node)
 {
-    if(node->type != AST_ADDRESS_OF)
+    if(node->as.unary_op.op != OP_ADDR)
         return NULL;
 
     if(node->as.unary_op.operand == NULL)
@@ -717,7 +735,7 @@ void codegen_assign(ASTNode* node)
 
         LLVMBuildStore(ctx.builder, new_val, entry->symbol_data.alloc); 
     }
-    else if(lhs->type == AST_DEREFERENCE) {
+    else if(lhs->type == AST_UNARY_OP && lhs->as.unary_op.op == OP_ADDR) {
         UnaryOpNode unary_node = lhs->as.unary_op;
         LLVMValueRef ptr = codegen_expression(unary_node.operand);
         if(ptr == NULL)

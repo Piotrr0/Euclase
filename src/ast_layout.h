@@ -19,6 +19,12 @@ typedef enum {
     OP_GE
 } BinaryOp;
 
+typedef enum {
+    OP_ADDR,
+    OP_DEREF,
+    OP_NEG
+} UnaryOP;
+
 typedef struct TypeInfo {
     TokenType base_type;
     int pointer_level;
@@ -124,6 +130,7 @@ typedef struct {
 } FuncCallNode;
 
 typedef struct {
+    UnaryOP op;
     ASTNode* operand;
 } UnaryOpNode;
 
