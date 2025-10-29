@@ -243,6 +243,7 @@ ASTNode* create_unary_op_node(UnaryOP op, ASTNode* operand) {
     node->type = AST_UNARY_OP;
     node->line = current_token()->line;
     node->column = current_token()->column;
+    node->as.unary_op.op = op;
     node->as.unary_op.operand = operand;
     return node;
 }
@@ -500,7 +501,7 @@ ASTNode* parse_compound_operators() {
     if (lhs == NULL)
         return NULL;
 
-    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_MEMBER_ACCESS && lhs->type != AST_UNARY_OP && lhs->as.unary_op.op == OP_DEREF) {
+    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_MEMBER_ACCESS && (lhs->type != AST_UNARY_OP || lhs->as.unary_op.op != OP_DEREF)) {
         free_ast(lhs);
         return NULL;
     }
@@ -1196,7 +1197,7 @@ ASTNode* parse_assignment() {
         return NULL;
     }
 
-    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_MEMBER_ACCESS && lhs->type != AST_UNARY_OP && lhs->as.unary_op.op == OP_DEREF) {
+    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_MEMBER_ACCESS && (lhs->type != AST_UNARY_OP || lhs->as.unary_op.op != OP_DEREF)) {
         printf("Parse error: invalid lvalue\n");
         free_ast(lhs);
         return NULL;
@@ -1669,11 +1670,11 @@ void print_ast(ASTNode* node, int level)
                 const char* op_name = NULL;
                 switch (node->as.unary_op.op) {
                     case OP_DEREF: op_name = "Dereference"; break;
-                    case OP_ADDR: op_name = "Address Of"; break;
-                    case OP_NEG: op_name = "Negation"; break;
-                    default:     op_name = "Unknown"; break;
+                    case OP_ADDR:  op_name = "Address Of"; break;
+                    case OP_NEG:   op_name = "Negation"; break;
+                    default:       op_name = "Unknown"; break;
                 }
-                printf("BinaryOp(%s)\n", op_name);
+                printf("UnaryOp(%s)\n", op_name);
                 if (node->as.unary_op.operand)
                     print_ast(node->as.unary_op.operand, level + 1);
                 break;

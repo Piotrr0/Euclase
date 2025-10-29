@@ -491,9 +491,9 @@ LLVMValueRef codegen_unary_op(ASTNode* node) {
     UnaryOpNode unary_node = node->as.unary_op;
 
     switch (unary_node.op) {
-        case OP_ADDR:   return codegen_address_of(node->as.unary_op.operand); 
-        case OP_DEREF:  return codegen_dereference(node->as.unary_op.operand);
-        case OP_NEG:    return codegen_negation(node->as.unary_op.operand);
+        case OP_ADDR:   return codegen_address_of(node); 
+        case OP_DEREF:  return codegen_dereference(node);
+        case OP_NEG:    return codegen_negation(node);
         default: break;
     }
 
@@ -649,12 +649,9 @@ LLVMValueRef codegen_dereference(ASTNode* node)
 {
     UnaryOpNode dereference_node = node->as.unary_op;
     
-    if (dereference_node.op != OP_DEREF)
+    if (dereference_node.op != OP_DEREF && dereference_node.operand == NULL)
         return NULL;
     
-    if (dereference_node.operand == NULL)
-        return NULL;
-
     ASTNode* ptr_expr = dereference_node.operand;
     if (ptr_expr->type != AST_IDENTIFIER) 
         return NULL;
@@ -735,7 +732,7 @@ void codegen_assign(ASTNode* node)
 
         LLVMBuildStore(ctx.builder, new_val, entry->symbol_data.alloc); 
     }
-    else if(lhs->type == AST_UNARY_OP && lhs->as.unary_op.op == OP_ADDR) {
+    else if(lhs->type == AST_UNARY_OP && lhs->as.unary_op.op == OP_DEREF) {
         UnaryOpNode unary_node = lhs->as.unary_op;
         LLVMValueRef ptr = codegen_expression(unary_node.operand);
         if(ptr == NULL)
