@@ -54,6 +54,8 @@ TrieNode* build_operator_trie(TrieNode* root) {
     trie_insert(root, "*=", TOK_ASSIGNMENT_MULTIPLICATION);
     trie_insert(root, "/=", TOK_ASSIGNMENT_DIVISION);
     trie_insert(root, "%=", TOK_ASSIGNMENT_MODULO);
+    trie_insert(root, "++", TOK_INCREMENT);
+    trie_insert(root, "--", TOK_DECREMENT);
     
     return root;
 }

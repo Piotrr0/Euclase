@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include "string_view.h"
+#include "token.h"
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
@@ -381,6 +382,8 @@ const char* token_type_name(TokenType type) {
         case TOK_LESS:          return "LESS";
         case TOK_GREATER:       return "GREATER";
         case TOK_AMPERSAND:     return "AMPERSAND";
+        case TOK_INCREMENT:     return "INCREMENT";
+        case TOK_DECREMENT:     return "DECREMENT";
 
         case TOK_ADDITION:      return "ADDITION";
         case TOK_SUBTRACTION:   return "SUBTRACTION";
