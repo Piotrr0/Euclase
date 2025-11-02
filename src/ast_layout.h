@@ -22,7 +22,13 @@ typedef enum {
 typedef enum {
     OP_ADDR,
     OP_DEREF,
-    OP_NEG
+    OP_NEG,
+    OP_PRE_INC,
+    OP_PRE_DEC,
+    OP_POST_INC,
+    OP_POST_DEC,
+
+
 } UnaryOP;
 
 typedef struct TypeInfo {

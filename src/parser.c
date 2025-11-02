@@ -665,12 +665,45 @@ ASTNode* parse_negation() {
     return unary_minus_node;
 }
 
+ASTNode* parse_pre_decrement() {
+    if (!match(TOK_INCREMENT))
+        return NULL;
+
+    ASTNode* node = parse_unary();
+    if (node == NULL)
+        return NULL;
+
+    ASTNode* dec = create_unary_op_node(OP_PRE_DEC, node);
+    if (dec == NULL)
+        free_ast(node);
+    
+    return dec;
+}
+
+ASTNode* parse_pre_increment() {
+    if (!match(TOK_DECREMENT))
+        return NULL;
+
+    ASTNode* node = parse_unary();
+    if (node == NULL)
+        return NULL;
+
+    ASTNode* inc = create_unary_op_node(OP_PRE_INC, node);
+    if (inc == NULL)
+        free_ast(node);
+    
+    return inc;
+}
+
 ASTNode* parse_unary()
 {
     switch (current_token()->type) {
         case TOK_SUBTRACTION:       return parse_negation();
         case TOK_MULTIPLICATION:    return parse_dereference();
         case TOK_AMPERSAND:         return parse_address_of();
+        case TOK_INCREMENT:         return parse_pre_increment();
+        case TOK_DECREMENT:         return parse_pre_decrement();
+
         default: break;
     }
 
