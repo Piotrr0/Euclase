@@ -549,7 +549,59 @@ ASTNode* parse_compound_operators() {
 
 ASTNode* parse_expression() 
 {
-    return parse_equality();
+    return parse_assignment();
+}
+
+ASTNode* parse_assignment()
+{
+    ASTNode* left = parse_equality();
+    if (left == NULL) 
+        return NULL;
+    
+    while (check(TOK_ASSIGNMENT) || is_compound_token(current_token()->type))
+    {
+        if (left->type != AST_IDENTIFIER && left->type != AST_MEMBER_ACCESS && (left->type != AST_UNARY_OP || left->as.unary_op.op != OP_DEREF)) {
+            free_ast(left);
+            return NULL;
+        }
+        
+        TokenType op_tok = current_token()->type;
+        advance();
+        
+        ASTNode* right = parse_assignment();
+        if (right == NULL) {
+            free_ast(left);
+            return NULL;
+        }
+
+        BinaryOp op;
+        switch(op_tok) {
+            case TOK_ASSIGNMENT_ADDITION:       op = OP_ADD; break;
+            case TOK_ASSIGNMENT_SUBTRACTION:    op = OP_SUB; break;
+            case TOK_ASSIGNMENT_MULTIPLICATION: op = OP_MUL; break;
+            case TOK_ASSIGNMENT_DIVISION:       op = OP_DIV; break;
+            case TOK_ASSIGNMENT_MODULO:         op = OP_MOD; break;
+            case TOK_ASSIGNMENT:                return create_assign_node(left, right);
+            default: free_ast(left); free_ast(right); return NULL;
+        }
+        
+        if (left->type != AST_IDENTIFIER && left->type != AST_MEMBER_ACCESS && (left->type != AST_UNARY_OP || left->as.unary_op.op != OP_DEREF)) {
+            free_ast(left);
+            return NULL;
+        }
+
+        ASTNode* left_copy = create_identifier_node(strdup(left->as.identifier.name));
+        if (left_copy == NULL) {
+            free_ast(left);
+            free_ast(right);
+            return NULL;
+        }
+        
+        ASTNode* binary_node = create_binary_op_node(op, left_copy, right);
+        return create_assign_node(left, binary_node);
+    }
+    
+    return left;
 }
 
 ASTNode* parse_equality()
@@ -1217,48 +1269,6 @@ int is_compound_token(TokenType type) {
     return 0;
 }
 
-ASTNode* parse_assignment() {
-    if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION)) {
-        Token* next = peek_token(1);
-        if (is_compound_token(next->type))
-            return parse_compound_operators();
-    }
-
-    ASTNode* lhs = parse_expression();
-    if (lhs == NULL) {
-        printf("Parse error: expected lvalue\n");
-        return NULL;
-    }
-
-    if (lhs->type != AST_IDENTIFIER && lhs->type != AST_MEMBER_ACCESS && (lhs->type != AST_UNARY_OP || lhs->as.unary_op.op != OP_DEREF)) {
-        printf("Parse error: invalid lvalue\n");
-        free_ast(lhs);
-        return NULL;
-    }
-
-    if (!match(TOK_ASSIGNMENT)) {
-        printf("Parse error: expected '='\n");
-        free_ast(lhs);
-        return NULL;
-    }
-
-    ASTNode* rhs = parse_expression();
-    if (rhs == NULL) {
-        printf("Parse error: expected expression on RHS\n");
-        free_ast(lhs);
-        return NULL;
-    }
-
-    if (!match(TOK_SEMICOLON)) {
-        printf("Parse error: expected ';'\n");
-        free_ast(lhs);
-        free_ast(rhs);
-        return NULL;
-    }
-
-    return create_assign_node(lhs, rhs);
-}
-
 ASTNode* parse_variable_declaration() {
     TypeInfo type = parse_type();
     if (current_token()->type != TOK_IDENTIFIER) {
@@ -1396,8 +1406,6 @@ ASTNode* parse_statement() {
         case TOK_FOR:               return parse_for_loop();
         case TOK_WHILE:             return parse_while_loop();
         case TOK_LBRACE:            return parse_block();
-        case TOK_IDENTIFIER:        return parse_assignment();
-        case TOK_MULTIPLICATION:    return parse_assignment();
         case TOK_STRUCT:            return parse_struct_declaration();
         default: break;
     }
@@ -1405,9 +1413,16 @@ ASTNode* parse_statement() {
     if (is_type(current_token()->type))
         return parse_variable_declaration();
 
-    printf("Parse error: unknown statement\n");
-    advance();
-    return NULL; 
+    ASTNode* node = parse_expression();
+    if (node == NULL)
+        return NULL;
+
+    if (!match(TOK_SEMICOLON)) {
+        printf("Parse error: expected ';'\n");
+        free_ast(node);
+        return NULL;
+    }
+    return node;
 }
 
 void add_statement_to_block(ASTNode* block, ASTNode* stmt) {

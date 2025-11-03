@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define RESET "\033[0m"
+
 const char* test_variables = 
     "namespace main {"
     "    int a = 1;"
@@ -341,9 +345,9 @@ void run_tests() {
             continue;
 
         int result = results[i];
-        if(result == tests[i].expected)
-            printf("Test: %d (%s), Passed with result: %d\n", i, tests[i].name, result);
+        if (result == tests[i].expected)
+            printf("Test: %d (%s), %sPassed%s with result: %d\n", i, tests[i].name, KGRN, RESET, result);
         else
-            printf("Test: %d (%s), Failed with result: %d (expected %d)\n", i, tests[i].name, result, tests[i].expected);
+            printf("Test: %d (%s), %sFailed%s with result: %d (expected %d)\n", i, tests[i].name, KRED, RESET, result, tests[i].expected);
     }
 }
