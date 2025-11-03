@@ -718,7 +718,7 @@ ASTNode* parse_negation() {
 }
 
 ASTNode* parse_pre_decrement() {
-    if (!match(TOK_INCREMENT))
+    if (!match(TOK_DECREMENT))
         return NULL;
 
     ASTNode* node = parse_unary();
@@ -733,7 +733,7 @@ ASTNode* parse_pre_decrement() {
 }
 
 ASTNode* parse_pre_increment() {
-    if (!match(TOK_DECREMENT))
+    if (!match(TOK_INCREMENT))
         return NULL;
 
     ASTNode* node = parse_unary();
@@ -1717,10 +1717,14 @@ void print_ast(ASTNode* node, int level)
         case AST_UNARY_OP: {
                 const char* op_name = NULL;
                 switch (node->as.unary_op.op) {
-                    case OP_DEREF: op_name = "Dereference"; break;
-                    case OP_ADDR:  op_name = "Address Of"; break;
-                    case OP_NEG:   op_name = "Negation"; break;
-                    default:       op_name = "Unknown"; break;
+                    case OP_DEREF:      op_name = "Dereference"; break;
+                    case OP_ADDR:       op_name = "Address Of"; break;
+                    case OP_NEG:        op_name = "Negation"; break;
+                    case OP_POST_INC:   op_name = "Post Increment"; break;
+                    case OP_POST_DEC:   op_name = "Post Decrement"; break;
+                    case OP_PRE_INC:    op_name = "Pre Increment"; break;
+                    case OP_PRE_DEC:    op_name = "Pre Decrement"; break;
+                    default:            op_name = "Unknown"; break;
                 }
                 printf("UnaryOp(%s)\n", op_name);
                 if (node->as.unary_op.operand)

@@ -273,6 +273,8 @@ const char* test_inc_dec =
     "   int main() {"
     "       int a = 5;"
     "       ++a;"
+    "       ++a;"
+    "       --a;"
     "       return a;"
     "   }"
     "}";
@@ -299,7 +301,7 @@ void init_tests() {
     tests[16] =(TestCase){"compound_operators", test_compound_operators, 16};
     tests[17] =(TestCase){"struct", test_struct, 40};
     tests[18] =(TestCase){"string_literal", test_string_literal, 5};
-    //tests[19] =(TestCase){"inc_dec", test_inc_dec, 6};
+    tests[19] =(TestCase){"inc_dec", test_inc_dec, 6};
 }
 
 int run_test(const char* test) 
