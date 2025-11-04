@@ -47,6 +47,9 @@ LLVMValueRef codegen_variable_load(const char* name);
 LLVMValueRef codegen_cast(ASTNode* node);
 LLVMValueRef codegen_function_call(ASTNode* node);
 
+LLVMValueRef codegen_pre_inc_dec(ASTNode* node);
+LLVMValueRef codegen_pre_dec(ASTNode* node);
+
 void codegen_while_loop(ASTNode* node);
 void codegen_for_loop(ASTNode* node);
 
