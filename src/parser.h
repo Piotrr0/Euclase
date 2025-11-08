@@ -118,6 +118,11 @@ Token* peek_token(int offset);
 
 void free_ast(ASTNode* node);
 
+ASTNode* parse_pre_increment();
+ASTNode* parse_pre_decrement();
+ASTNode* parse_post_increment(ASTNode* operand);
+ASTNode* parse_post_decrement(ASTNode* operand);
+
 ASTNode* parse_compound_operators();
 ASTNode* parse_expression();
 ASTNode* parse_equality();

@@ -747,6 +747,32 @@ ASTNode* parse_pre_increment() {
     return inc;
 }
 
+ASTNode* parse_post_increment(ASTNode* operand) {
+    if (!match(TOK_INCREMENT))
+        return operand;
+
+    ASTNode* inc = create_unary_op_node(OP_POST_INC, operand);
+    if (inc == NULL) {
+        free_ast(operand);
+        return NULL;
+    }
+    
+    return inc;
+}
+
+ASTNode* parse_post_decrement(ASTNode* operand) {
+    if (!match(TOK_DECREMENT))
+        return operand;
+
+    ASTNode* dec = create_unary_op_node(OP_POST_DEC, operand);
+    if (dec == NULL) {
+        free_ast(operand);
+        return NULL;
+    }
+    
+    return dec;
+}
+
 ASTNode* parse_unary()
 {
     switch (current_token()->type) {
@@ -790,6 +816,11 @@ ASTNode* parse_postfix()
         advance();
         node = member_access;
     }
+    
+    if (check(TOK_INCREMENT))
+        node = parse_post_increment(node);
+    else if (check(TOK_DECREMENT))
+        node = parse_post_decrement(node);
     
     return node;
 }
