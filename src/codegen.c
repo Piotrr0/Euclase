@@ -554,6 +554,72 @@ LLVMValueRef codegen_pre_dec(ASTNode* node) {
     return result;
 }
 
+LLVMValueRef codegen_post_inc(ASTNode* node) {
+    if (node->type != AST_UNARY_OP)
+        return NULL;
+    
+    UnaryOpNode unary_node = node->as.unary_op;
+    if (unary_node.operand == NULL || unary_node.operand->type != AST_IDENTIFIER)
+        return NULL;
+    
+    const char* var_name = unary_node.operand->as.identifier.name;
+    SymbolEntry* entry = lookup_symbol(st, var_name);
+    if (entry == NULL)
+        return NULL;
+    
+    LLVMValueRef alloca = entry->symbol_data.alloc;
+    LLVMTypeRef type = LLVMGetAllocatedType(alloca);
+    
+    LLVMValueRef original_value = LLVMBuildLoad2(ctx.builder, type, alloca, "post_inc_load");
+    
+    LLVMTypeKind kind = LLVMGetTypeKind(type);
+    LLVMValueRef one;
+    if (kind == LLVMIntegerTypeKind)
+        one = LLVMConstInt(type, 1, 0);
+    else if (kind == LLVMFloatTypeKind || kind == LLVMDoubleTypeKind)
+        one = LLVMConstReal(type, 1.0);
+    else
+        return NULL;
+    
+    LLVMValueRef incremented = codegen_addition(original_value, one, kind);    
+    LLVMBuildStore(ctx.builder, incremented, alloca);
+    
+    return original_value;
+}
+
+LLVMValueRef codegen_post_dec(ASTNode* node) {
+    if (node->type != AST_UNARY_OP)
+        return NULL;
+    
+    UnaryOpNode unary_node = node->as.unary_op;
+    if (unary_node.operand == NULL || unary_node.operand->type != AST_IDENTIFIER)
+        return NULL;
+    
+    const char* var_name = unary_node.operand->as.identifier.name;
+    SymbolEntry* entry = lookup_symbol(st, var_name);
+    if (entry == NULL)
+        return NULL;
+    
+    LLVMValueRef alloca = entry->symbol_data.alloc;
+    LLVMTypeRef type = LLVMGetAllocatedType(alloca);
+    
+    LLVMValueRef original_value = LLVMBuildLoad2(ctx.builder, type, alloca, "post_dec_load");
+    
+    LLVMTypeKind kind = LLVMGetTypeKind(type);
+    LLVMValueRef one;
+    if (kind == LLVMIntegerTypeKind)
+        one = LLVMConstInt(type, 1, 0);
+    else if (kind == LLVMFloatTypeKind || kind == LLVMDoubleTypeKind)
+        one = LLVMConstReal(type, 1.0);
+    else
+        return NULL;
+    
+    LLVMValueRef decremented = codegen_subtraction(original_value, one, kind);
+    LLVMBuildStore(ctx.builder, decremented, alloca);
+    
+    return original_value;
+}
+
 LLVMValueRef codegen_unary_op(ASTNode* node) {
     if (node->type != AST_UNARY_OP)
         return NULL;
@@ -561,11 +627,13 @@ LLVMValueRef codegen_unary_op(ASTNode* node) {
     UnaryOpNode unary_node = node->as.unary_op;
 
     switch (unary_node.op) {
-        case OP_ADDR:   return codegen_address_of(node); 
-        case OP_DEREF:  return codegen_dereference(node);
-        case OP_NEG:    return codegen_negation(node);
-        case OP_PRE_INC:return codegen_pre_inc(node);
-        case OP_PRE_DEC:return codegen_pre_dec(node);
+        case OP_ADDR:       return codegen_address_of(node); 
+        case OP_DEREF:      return codegen_dereference(node);
+        case OP_NEG:        return codegen_negation(node);
+        case OP_PRE_INC:    return codegen_pre_inc(node);
+        case OP_PRE_DEC:    return codegen_pre_dec(node);
+        case OP_POST_INC:   return codegen_post_inc(node);
+        case OP_POST_DEC:   return codegen_post_dec(node);
         default: break;
     }
 
