@@ -890,7 +890,7 @@ void codegen_block(ASTNode* node) {
     }
 
     BlockNode block_node = node->as.block;
-    
+
     push_scope(st);
     for(int i = 0; i < block_node.statement_count; i++)
     {
@@ -899,75 +899,87 @@ void codegen_block(ASTNode* node) {
     pop_scope(st);
 }
 
-// TODO: clean this mess
+LLVMTypeRef build_param_type(TypeInfo* type_info) {
+    LLVMTypeRef base_type = token_type_to_llvm_type(&ctx, type_info->base_type);
+    
+    for (int i = 0; i < type_info->pointer_level; i++) {
+        base_type = LLVMPointerType(base_type, 0);
+    }
+    
+    return base_type;
+}
+
+void collect_function_param_types(FunctionNode* func_node, LLVMTypeRef* param_types) {
+    for (int i = 0; i < func_node->param_count; i++) {
+        ASTNode* param = func_node->params[i];
+        param_types[i] = build_param_type(&param->as.param.type);
+    }
+}
+
+void setup_function_params(LLVMValueRef function, FunctionNode* func_node) {
+    for (int i = 0; i < func_node->param_count; i++) {
+        ASTNode* param = func_node->params[i];
+        TypeInfo* param_info = &param->as.param.type;
+        char* param_name = param->as.param.name;
+
+        LLVMTypeRef param_type = build_param_type(param_info);
+        LLVMValueRef alloca = LLVMBuildAlloca(ctx.builder, param_type, param_name);
+
+        SymbolData data = {
+            .name = param_name,
+            .is_global = 0,
+            .info = *param_info,
+            .alloc = alloca,
+        };
+        add_symbol(st, data);
+
+        LLVMValueRef param_val = LLVMGetParam(function, i);
+        LLVMBuildStore(ctx.builder, param_val, alloca);
+    }
+}
+
+void generate_function_body(ASTNode* body_node) {
+    if (body_node == NULL || body_node->type != AST_BLOCK)
+        return;
+
+    for (int i = 0; i < body_node->as.block.statement_count; i++) {
+        codegen_statement(body_node->as.block.statements[i]);
+    }
+}
+
 void codegen_function(ASTNode* node) {
-    if(node->type != AST_FUNCTION)
-    {
+    if (node->type != AST_FUNCTION) {
         printf("Codegen: Expected function node\n");
         return;
     }
+    FunctionNode* func_node = &node->as.function;
 
-    FunctionNode function_node = node->as.function;
+    LLVMTypeRef param_types[func_node->param_count];
+    collect_function_param_types(func_node, param_types);
 
-    LLVMTypeRef param_types[function_node.param_count];
-    for(int i = 0; i < function_node.param_count; i++)
-    {
-        ASTNode* param = function_node.params[i];
-        TypeInfo param_info = param->as.param.type;
+    LLVMTypeRef return_type = token_type_to_llvm_type(&ctx, func_node->return_type.base_type);
+    LLVMTypeRef func_type = LLVMFunctionType(
+        return_type,
+        param_types,
+        func_node->param_count,
+        0
+    );
 
-        LLVMTypeRef type = token_type_to_llvm_type(&ctx, param_info.base_type);
-
-        const int pointer_level = param_info.pointer_level;
-        for(int j = 0; j < pointer_level; j++)
-            type = LLVMPointerType(type, 0);
-
-        param_types[i] = type; 
-    }
-    
-    LLVMTypeRef ret_type = token_type_to_llvm_type(&ctx, function_node.return_type.base_type);    
-
-    LLVMTypeRef func_type = LLVMFunctionType(ret_type, param_types, function_node.param_count, 0);
-    LLVMValueRef function = LLVMAddFunction(ctx.module, function_node.name, func_type);
+    LLVMValueRef function = LLVMAddFunction(ctx.module, func_node->name, func_type);
     current_function = function;
-    
+
     LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(ctx.context, function, "entry");
     LLVMPositionBuilderAtEnd(ctx.builder, entry);
 
     push_scope(st);
-    for(int i = 0; i < function_node.param_count; i++) {
-        ASTNode* param = function_node.params[i];
-        TypeInfo param_info = param->as.param.type;
 
-        LLVMTypeRef param_type = token_type_to_llvm_type(&ctx, param_info.base_type);
-        for (int j = 0; j < param_info.pointer_level; j++) {
-            param_type = LLVMPointerType(param_type, 0);
-        }
-        
-        LLVMValueRef alloca = LLVMBuildAlloca(ctx.builder, param_type, param->as.param.name);
-        
-        SymbolData data = {
-            .name = param->as.param.name,
-            .is_global = 0,
-            .info = param->as.param.type,
-            .alloc = alloca,
-        };
-        add_symbol(st, data);
-    
-        LLVMValueRef param_val = LLVMGetParam(function, i);
-        LLVMBuildStore(ctx.builder, param_val, alloca);
-    }
-
-    ASTNode* func_block = node->as.function.body;
-    if(func_block != NULL && func_block->type == AST_BLOCK) {
-        for(int i = 0; i < func_block->as.block.statement_count; i++) {
-            codegen_statement(func_block->as.block.statements[i]);
-        }
-    }
+    setup_function_params(function, func_node);
+    generate_function_body(func_node->body);
 
     pop_scope(st);
 
     if (LLVMVerifyFunction(function, LLVMPrintMessageAction)) {
-        printf("Codegen: Function verification failed for %s\n", node->as.function.name);
+        printf("Codegen: Function verification failed for %s\n", func_node->name);
     }
 }
 

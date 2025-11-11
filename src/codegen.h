@@ -23,6 +23,9 @@ extern CodegenContext ctx;
 extern LLVMValueRef current_function;
 extern SymbolTable* st;
 
+LLVMTypeRef build_param_type(TypeInfo* type_info);
+void collect_function_param_types(FunctionNode* func_node, LLVMTypeRef* param_types);
+
 void init_codegen(CodegenContext* ctx, const char* module_name);
 void cleanup_codegen(CodegenContext* ctx);
 LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
@@ -69,7 +72,11 @@ LLVMValueRef generate_cast_instruction(LLVMValueRef value, LLVMTypeRef from_type
 
 void codegen_module_id(const char* name);
 void codegen_program(ASTNode* node);
+
+void setup_function_params(LLVMValueRef function, FunctionNode* func_node);
+void generate_function_body(ASTNode* body_node);
 void codegen_function(ASTNode* node);
+
 void codegen_block(ASTNode* node);
 void codegen_statement(ASTNode* node);
 void codegen_return(ASTNode* node);
