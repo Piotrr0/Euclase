@@ -293,9 +293,9 @@ void init_tests() {
     tests[5] = (TestCase){"nested_functions", test_nested_functions, 4};
     tests[6] = (TestCase){"arithmetic", test_arithmetic, 18};
     tests[7] = (TestCase){"equality", test_equality, 5};
-    tests[9] = (TestCase){"conditions", test_conditions, 1};
-    tests[10] =(TestCase){"less_greater", test_less_greater, 2};
-    tests[11] =(TestCase){"negative", test_negative_numbers, 150};
+    tests[8] = (TestCase){"conditions", test_conditions, 1};
+    tests[9] = (TestCase){"less_greater", test_less_greater, 2};
+    tests[10] =(TestCase){"negative", test_negative_numbers, 150};
     tests[11] =(TestCase){"for_loop", test_for_loops, 6};
     tests[12] =(TestCase){"while_loop", test_while_loops, 4};
     tests[13] =(TestCase){"less_greater_equals", test_less_greater_equals, 3};
