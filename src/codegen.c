@@ -708,7 +708,17 @@ void codegen_variable_declaration(ASTNode* node) {
     VarDeclNode var_decl_node = node->as.var_decl;
     TypeInfo var_decl_type = var_decl_node.type;
 
-    LLVMTypeRef var_type = token_type_to_llvm_type(&ctx, var_decl_type.base_type);
+    LLVMTypeRef var_type;
+    if (var_decl_type.base_type == TOK_IDENTIFIER) {
+        SymbolEntry* struct_entry = lookup_symbol(st, var_decl_type.type);
+        if (struct_entry == NULL || struct_entry->symbol_data.kind != SYMBOL_STRUCT) {
+            return;
+        }
+        var_type = struct_entry->symbol_data.as.struct_def.struct_type;
+    } 
+    else
+        var_type = token_type_to_llvm_type(&ctx, var_decl_type.base_type);
+
     for (int i = 0; i < var_decl_type.pointer_level; i++) {
         var_type = LLVMPointerType(var_type, 0);
     }
