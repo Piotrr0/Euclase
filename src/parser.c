@@ -288,7 +288,7 @@ ASTNode* create_member_access_node(ASTNode* object, char* member) {
     return node;
 }
 
-ASTNode* create_struct_decl_node(char* name) {
+ASTNode* create_struct_decl_node(char* type) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
@@ -296,7 +296,7 @@ ASTNode* create_struct_decl_node(char* name) {
     node->type = AST_STRUCT_DECL;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.struct_decl.name = name;
+    node->as.struct_decl.type = type;
     node->as.struct_decl.members = NULL;
     node->as.struct_decl.member_count = 0;
     return node;
@@ -451,7 +451,7 @@ void free_ast(ASTNode* node) {
             break;
             
         case AST_STRUCT_DECL:
-            free(node->as.struct_decl.name);
+            free(node->as.struct_decl.type);
             free_node_array(node->as.struct_decl.members, node->as.struct_decl.member_count);
             break;
             
@@ -480,6 +480,9 @@ int check(TokenType type) {
 }
 
 int is_type(TokenType t) {
+    if (t == TOK_IDENTIFIER && peek_token(1)->type == TOK_IDENTIFIER)
+        return 1;
+
     switch(t) {
         case TOK_INT: case TOK_UINT: case TOK_FLOAT: case TOK_UFLOAT:
         case TOK_DOUBLE: case TOK_UDOUBLE: case TOK_CHAR: case TOK_UCHAR:
@@ -1055,11 +1058,17 @@ TypeInfo parse_type()
     }
 
     TokenType ret_type = current_token()->type;
+    char* type = sv_to_owned_cstr(current_token()->lexeme);
     advance();
 
     int pointer_level = parse_pointer_level();
 
-    TypeInfo info = { .base_type = ret_type, .pointer_level = pointer_level };
+    TypeInfo info = { 
+        .base_type = ret_type, 
+        .pointer_level = pointer_level, 
+        .type = type 
+    };
+
     return info;
 }
 
@@ -1738,7 +1747,7 @@ void print_ast(ASTNode* node, int level)
             
         case AST_VAR_DECL:
             printf("VariableDecl(type %s, name %s, level %d)\n", 
-                token_type_name(node->as.var_decl.type.base_type), 
+                node->as.var_decl.type.type,
                 node->as.var_decl.name, 
                 node->as.var_decl.type.pointer_level);
             if (node->as.var_decl.initializer)
@@ -1857,7 +1866,7 @@ void print_ast(ASTNode* node, int level)
             break;
             
         case AST_STRUCT_DECL:
-            printf("Struct %s\n", node->as.struct_decl.name);
+            printf("Struct %s\n", node->as.struct_decl.type);
             for (int i = 0; i < node->as.struct_decl.member_count; i++)
                 print_ast(node->as.struct_decl.members[i], level + 1);
             break;

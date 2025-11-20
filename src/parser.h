@@ -99,7 +99,7 @@ ASTNode* create_unary_op_node(UnaryOP op, ASTNode* operand);
 ASTNode* create_binary_op_node(BinaryOp op, ASTNode* left, ASTNode* right);
 ASTNode* create_cast_node(TypeInfo target_type, ASTNode* expr);
 ASTNode* create_member_access_node(ASTNode* object, char* member);
-ASTNode* create_struct_decl_node(char* name);
+ASTNode* create_struct_decl_node(char* type);
 
 void add_param_to_function(ASTNode* func, ASTNode* param);
 void add_member_to_struct(ASTNode* struct_decl, ASTNode* member);

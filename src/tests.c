@@ -290,8 +290,9 @@ const char* test_access_member =
     "   };"
     ""
     "   int main() {"
-    "       foo.a = 10;"
-    "       return foo.a;"
+    "       foo my_foo;"
+    "       my_foo.a = 10;"
+    "       return my_foo.a;"
     "   }"
     "}";
 

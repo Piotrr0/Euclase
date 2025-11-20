@@ -31,6 +31,7 @@ void cleanup_codegen(CodegenContext* ctx);
 LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
 
 void codegen_struct_declaration(ASTNode* node);
+LLVMValueRef codegen_member_access(ASTNode* node);
 
 void codegen_if(ASTNode* node);
 void codegen_then_block(ASTNode* node_block, LLVMBasicBlockRef mergeBB);

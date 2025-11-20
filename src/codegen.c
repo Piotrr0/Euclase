@@ -1,5 +1,6 @@
 #include "codegen.h"
 #include "ast_layout.h"
+#include "lookup_table.h"
 #include "parser.h"
 #include "token.h"
 #include <llvm-c/Core.h>
@@ -656,6 +657,7 @@ LLVMValueRef codegen_expression(ASTNode *node) {
         case AST_CAST:          return codegen_cast(node);
         case AST_UNARY_OP:      return codegen_unary_op(node);
         case AST_BINARY_OP:     return codegen_binary_op(node);
+        case AST_MEMBER_ACCESS: return codegen_member_access(node);
 
         default:
             printf("Unhandled expression type: %d\n", node->type);
@@ -718,7 +720,6 @@ void codegen_variable_declaration(ASTNode* node) {
         LLVMValueRef init_val = codegen_expression(var_decl_node.initializer);
         if (init_val == NULL) 
             return;
-
         LLVMBuildStore(ctx.builder, init_val, alloca);
     }
 
@@ -755,7 +756,7 @@ void codegen_struct_declaration(ASTNode* node) {
     
     StructDeclNode struct_decl_node = node->as.struct_decl;
 
-    LLVMTypeRef structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), struct_decl_node.name);
+    LLVMTypeRef structType = LLVMStructCreateNamed(LLVMGetGlobalContext(), struct_decl_node.type);
     LLVMTypeRef* field_types = malloc(sizeof(LLVMTypeRef) * struct_decl_node.member_count);
 
     char** member_names = malloc(sizeof(char*) * struct_decl_node.member_count);
@@ -778,11 +779,11 @@ void codegen_struct_declaration(ASTNode* node) {
     LLVMStructSetBody(structType, field_types, struct_decl_node.member_count, 0);
     free(field_types);
 
-    add_struct_symbol(st, struct_decl_node.name, structType, struct_decl_node.member_count, member_names, member_types);
+    add_struct_symbol(st, struct_decl_node.type, structType, struct_decl_node.member_count, member_names, member_types);
 }
 
 LLVMValueRef codegen_member_access(ASTNode* node) {
-    
+    return NULL;
 }
 
 LLVMValueRef codegen_dereference(ASTNode* node)
