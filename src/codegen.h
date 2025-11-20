@@ -23,13 +23,16 @@ extern CodegenContext ctx;
 extern LLVMValueRef current_function;
 extern SymbolTable* st;
 
+LLVMTypeRef build_param_type(TypeInfo* type_info);
+void collect_function_param_types(FunctionNode* func_node, LLVMTypeRef* param_types);
+
 void init_codegen(CodegenContext* ctx, const char* module_name);
 void cleanup_codegen(CodegenContext* ctx);
 LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
 
 void codegen_struct_declaration(ASTNode* node);
 
-void codegen_condition(ASTNode* node);
+void codegen_if(ASTNode* node);
 void codegen_then_block(ASTNode* node_block, LLVMBasicBlockRef mergeBB);
 void codegen_else_block(ASTNode* node_else, LLVMBasicBlockRef mergeBB);
 
@@ -41,9 +44,17 @@ LLVMValueRef codegen_less_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeK
 LLVMValueRef codegen_greater_equal(LLVMValueRef left, LLVMValueRef right, LLVMTypeKind type);
 
 LLVMValueRef codegen_constant(ASTNode* node);
+LLVMValueRef codegen_string_literal(ASTNode* node);
+LLVMValueRef codegen_char_literal(ASTNode* node);
 LLVMValueRef codegen_variable_load(const char* name);
 LLVMValueRef codegen_cast(ASTNode* node);
 LLVMValueRef codegen_function_call(ASTNode* node);
+
+LLVMValueRef codegen_pre_inc_dec(ASTNode* node);
+LLVMValueRef codegen_pre_dec(ASTNode* node);
+LLVMValueRef codegen_post_inc(ASTNode* node);
+LLVMValueRef codegen_post_dec(ASTNode* node);
+
 
 void codegen_while_loop(ASTNode* node);
 void codegen_for_loop(ASTNode* node);
@@ -61,7 +72,11 @@ LLVMValueRef generate_cast_instruction(LLVMValueRef value, LLVMTypeRef from_type
 
 void codegen_module_id(const char* name);
 void codegen_program(ASTNode* node);
+
+void setup_function_params(LLVMValueRef function, FunctionNode* func_node);
+void generate_function_body(ASTNode* body_node);
 void codegen_function(ASTNode* node);
+
 void codegen_block(ASTNode* node);
 void codegen_statement(ASTNode* node);
 void codegen_return(ASTNode* node);
@@ -69,7 +84,7 @@ void codegen_variable_declaration(ASTNode* node);
 void codegen_global_variable_declaration(ASTNode* node);
 void codegen_assign(ASTNode* node);
 
-LLVMValueRef codegen_unary_minus(ASTNode* node);
+LLVMValueRef codegen_negation(ASTNode* node);
 LLVMValueRef codegen_expression(ASTNode* node);
 LLVMValueRef codegen_dereference(ASTNode* node);
 LLVMValueRef codegen_address_of(ASTNode* node);

@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define RESET "\033[0m"
+
 const char* test_variables = 
     "namespace main {"
     "    int a = 1;"
@@ -254,6 +258,30 @@ const char* test_struct =
     "   }"
     "}";
 
+const char* test_string_literal = 
+    "namespace main {"
+    "   int main() {"
+    "       char a = 'h';"
+    "       char* b = \"hello world\";"
+
+    "       return 5;"
+    "   }"
+    "}";
+
+const char* test_inc_dec = 
+    "namespace main {"
+    "   int main() {"
+    "       int a = 5;"
+    "       ++a;"
+    "       ++a;"
+    "       --a;"
+    "       a--;"
+    "       a--;"
+    "       a++;"
+    "       return a;"
+    "   }"
+    "}";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -265,9 +293,9 @@ void init_tests() {
     tests[5] = (TestCase){"nested_functions", test_nested_functions, 4};
     tests[6] = (TestCase){"arithmetic", test_arithmetic, 18};
     tests[7] = (TestCase){"equality", test_equality, 5};
-    tests[9] = (TestCase){"conditions", test_conditions, 1};
-    tests[10] =(TestCase){"less_greater", test_less_greater, 2};
-    tests[11] =(TestCase){"negative", test_negative_numbers, 150};
+    tests[8] = (TestCase){"conditions", test_conditions, 1};
+    tests[9] = (TestCase){"less_greater", test_less_greater, 2};
+    tests[10] =(TestCase){"negative", test_negative_numbers, 150};
     tests[11] =(TestCase){"for_loop", test_for_loops, 6};
     tests[12] =(TestCase){"while_loop", test_while_loops, 4};
     tests[13] =(TestCase){"less_greater_equals", test_less_greater_equals, 3};
@@ -275,6 +303,8 @@ void init_tests() {
     tests[15] =(TestCase){"comments", test_comments, 2};
     tests[16] =(TestCase){"compound_operators", test_compound_operators, 16};
     tests[17] =(TestCase){"struct", test_struct, 40};
+    tests[18] =(TestCase){"string_literal", test_string_literal, 5};
+    tests[19] =(TestCase){"inc_dec", test_inc_dec, 5};
 }
 
 int run_test(const char* test) 
@@ -320,9 +350,9 @@ void run_tests() {
             continue;
 
         int result = results[i];
-        if(result == tests[i].expected)
-            printf("Test: %d (%s), Passed with result: %d\n", i, tests[i].name, result);
+        if (result == tests[i].expected)
+            printf("Test: %d (%s), %sPassed%s with result: %d\n", i, tests[i].name, KGRN, RESET, result);
         else
-            printf("Test: %d (%s), Failed with result: %d (expected %d)\n", i, tests[i].name, result, tests[i].expected);
+            printf("Test: %d (%s), %sFailed%s with result: %d (expected %d)\n", i, tests[i].name, KRED, RESET, result, tests[i].expected);
     }
 }
