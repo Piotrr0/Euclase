@@ -282,6 +282,19 @@ const char* test_inc_dec =
     "   }"
     "}";
 
+const char* test_access_member = 
+    "namespace main {"
+    "   struct foo {"
+    "       int a;"
+    "       int b;"
+    "   };"
+    ""
+    "   int main() {"
+    "       foo.a = 10;"
+    "       return foo.a;"
+    "   }"
+    "}";
+
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -305,6 +318,7 @@ void init_tests() {
     tests[17] =(TestCase){"struct", test_struct, 40};
     tests[18] =(TestCase){"string_literal", test_string_literal, 5};
     tests[19] =(TestCase){"inc_dec", test_inc_dec, 5};
+    tests[20] =(TestCase){"access_member", test_access_member, 10};
 }
 
 int run_test(const char* test) 
