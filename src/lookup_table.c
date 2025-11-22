@@ -104,6 +104,47 @@ void pop_scope(SymbolTable* st) {
     st->current_scope = st->scopes[st->scope_count - 1];
 }
 
+int add_variable_symbol(SymbolTable* st, const char* name, TypeInfo type, LLVMValueRef alloc, int is_global) {
+    SymbolData data = {
+        .name = (char*)name,
+        .kind = SYMBOL_VARIABLE,
+        .as.variable = {
+            .type = type,
+            .alloc = alloc,
+            .is_global = is_global
+        }
+    };
+    return add_symbol(st, data);
+}
+
+int add_struct_symbol(SymbolTable* st, const char* name, LLVMTypeRef struct_type, int member_count, char** member_names, TypeInfo* member_types) {
+    SymbolData data = {
+        .name = (char*)name,
+        .kind = SYMBOL_STRUCT,
+        .as.struct_def = {
+            .struct_type = struct_type,
+            .member_count = member_count,
+            .member_names = member_names,
+            .member_types = member_types
+        }
+    };
+    return add_symbol(st, data);
+}
+
+int add_function_symbol(SymbolTable* st, const char* name, TypeInfo return_type, int param_count, TypeInfo* param_types, LLVMValueRef function) {
+    SymbolData data = {
+        .name = (char*)name,
+        .kind = SYMBOL_FUNCTION,
+        .as.function = {
+            .return_type = return_type,
+            .param_count = param_count,
+            .param_types = param_types,
+            .function = function
+        }
+    };
+    return add_symbol(st, data);
+}
+
 int add_symbol(SymbolTable* st, SymbolData symbol_data) {
     if (st == NULL)
         return 0;
@@ -158,4 +199,38 @@ SymbolEntry* lookup_symbol(SymbolTable* st, const char* name) {
         scope = scope->parent;
     }
     return NULL;
+}
+
+LLVMTypeRef lookup_struct_type(SymbolTable* st, const char* name) {
+    SymbolEntry* entry = lookup_symbol(st, name);
+    if (entry == NULL || entry->symbol_data.kind != SYMBOL_STRUCT)
+        return NULL;
+
+    return entry->symbol_data.as.struct_def.struct_type;
+}
+
+int get_struct_member_index(SymbolTable* st, const char* struct_name, const char* member_name) {
+    SymbolEntry* entry = lookup_symbol(st, struct_name);
+    if (entry == NULL || entry->symbol_data.kind != SYMBOL_STRUCT)
+        return -1;
+
+    StructSymbolData* struct_data = &entry->symbol_data.as.struct_def;
+    for (int i = 0; i < struct_data->member_count; i++) {
+        if (strcmp(struct_data->member_names[i], member_name) == 0)
+            return i;
+    }
+
+    return -1;
+}
+
+TypeInfo* get_struct_member_type(SymbolTable* st, const char* struct_name, const char* member_name) {
+    SymbolEntry* entry = lookup_symbol(st, struct_name);
+    if (entry == NULL || entry->symbol_data.kind != SYMBOL_STRUCT)
+        return NULL;
+
+    int index = get_struct_member_index(st, struct_name, member_name);
+    if (index < 0)
+        return NULL;
+
+    return &entry->symbol_data.as.struct_def.member_types[index];
 }

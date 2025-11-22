@@ -8,11 +8,42 @@
 #define HASH_TABLE_SIZE 32
 #define MAX_SCOPE_DEPTH 64
 
+typedef enum {
+    SYMBOL_VARIABLE,
+    SYMBOL_FUNCTION,
+    SYMBOL_STRUCT
+} SymbolKind;
+
+typedef struct {
+    TypeInfo type;
+    LLVMValueRef alloc;
+    int is_global;
+} VariableSymbolData;
+
+typedef struct {
+    TypeInfo return_type;
+    int param_count;
+    TypeInfo* param_types;
+    LLVMValueRef function;
+} FunctionSymbolData;
+
+typedef struct {
+    LLVMTypeRef struct_type;
+    int member_count;
+    char** member_names;
+    TypeInfo* member_types;
+} StructSymbolData;
+
 typedef struct SymbolData {
     char* name;
-    int is_global;
-    TypeInfo info;
-    LLVMValueRef alloc;
+    SymbolKind kind;
+
+    union {
+        VariableSymbolData variable;
+        FunctionSymbolData function;
+        StructSymbolData struct_def;
+    } as;
+    
 } SymbolData;
 
 typedef struct SymbolEntry {
@@ -48,9 +79,16 @@ void free_symbol_entry(SymbolEntry* entry);
 void push_scope(SymbolTable* st);
 void pop_scope(SymbolTable* st);
 
+int add_variable_symbol(SymbolTable* st, const char* name, TypeInfo type, LLVMValueRef alloc, int is_global);
+int add_struct_symbol(SymbolTable* st, const char* name, LLVMTypeRef struct_type, int member_count, char** member_names, TypeInfo* member_types);
+int add_function_symbol(SymbolTable* st, const char* name, TypeInfo return_type, int param_count, TypeInfo* param_types, LLVMValueRef function);
+
 int add_symbol(SymbolTable* st, SymbolData symbol_data);
 SymbolEntry* lookup_symbol_current_scope(SymbolTable* st, const char* name);
 SymbolEntry* lookup_symbol(SymbolTable* st, const char* name);
+LLVMTypeRef lookup_struct_type(SymbolTable* st, const char* name);
+int get_struct_member_index(SymbolTable* st, const char* struct_name, const char* member_name);
+TypeInfo* get_struct_member_type(SymbolTable* st, const char* struct_name, const char* member_name);
 
 size_t hash_string(const char* str);
 

@@ -33,6 +33,7 @@ typedef enum {
 
 typedef struct TypeInfo {
     TokenType base_type;
+    char* type;
     int pointer_level;
 } TypeInfo;
 
@@ -157,7 +158,7 @@ typedef struct {
 } MemberAccessNode;
 
 typedef struct {
-    char* name;
+    char* type;
 
     ASTNode** members;
     int member_count;
