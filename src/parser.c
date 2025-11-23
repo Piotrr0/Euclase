@@ -15,13 +15,16 @@ ASTNode* create_program_node(char* name) {
     node->type = AST_PROGRAM;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.program.name = name;
-    node->as.program.functions = NULL;
-    node->as.program.function_count = 0;
-    node->as.program.structs = NULL;
-    node->as.program.struct_count = 0;
-    node->as.program.globals = NULL;
-    node->as.program.global_count = 0;
+    node->as.program = (ProgramNode) {
+        .name = name,
+        .functions = NULL,
+        .function_count = 0,
+        .structs = NULL,
+        .struct_count = 0,
+        .globals = NULL,
+        .global_count = 0
+    };
+    
     return node;
 }
 
@@ -33,11 +36,14 @@ ASTNode* create_function_node(char* name, TypeInfo return_type) {
     node->type = AST_FUNCTION;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.function.name = name;
-    node->as.function.return_type = return_type;
-    node->as.function.params = NULL;
-    node->as.function.param_count = 0;
-    node->as.function.body = NULL;
+    node->as.function = (FunctionNode) {
+        .name = name,
+        .return_type = return_type,
+        .params = NULL,
+        .param_count = 0,
+        .body = NULL
+    };
+
     return node;
 }
 
@@ -49,8 +55,11 @@ ASTNode* create_block_node() {
     node->type = AST_BLOCK;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.block.statements = NULL;
-    node->as.block.statement_count = 0;
+    node->as.block = (BlockNode) {
+        .statements = NULL,
+        .statement_count = 0
+    };
+
     return node;
 }
 
@@ -62,8 +71,11 @@ ASTNode* create_param_node(char* name, TypeInfo type) {
     node->type = AST_PARAM_LIST;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.param.name = name;
-    node->as.param.type = type;
+    node->as.param = (ParamNode) {
+        .name = name,
+        .type = type
+    };
+
     return node;
 }
 
@@ -75,7 +87,10 @@ ASTNode* create_return_node(ASTNode* value) {
     node->type = AST_RETURN;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.return_stmt.value = value;
+    node->as.return_stmt = (ReturnNode) {
+        .value = value
+    };
+
     return node;
 }
 
@@ -87,9 +102,12 @@ ASTNode* create_var_decl_node(char* name, TypeInfo type, ASTNode* initializer) {
     node->type = AST_VAR_DECL;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.var_decl.name = name;
-    node->as.var_decl.type = type;
-    node->as.var_decl.initializer = initializer;
+    node->as.var_decl = (VarDeclNode) {
+        .name = name,
+        .type = type,
+        .initializer = initializer
+    };
+
     return node;
 }
 
@@ -101,8 +119,11 @@ ASTNode* create_assign_node(ASTNode* target, ASTNode* value) {
     node->type = AST_ASSIGN;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.assign.target = target;
-    node->as.assign.value = value;
+    node->as.assign = (AssignNode) {
+        .target = target,
+        .value = value
+    };
+
     return node;
 }
 
@@ -114,9 +135,12 @@ ASTNode* create_if_node(ASTNode* condition, ASTNode* then_branch, ASTNode* else_
     node->type = AST_IF;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.if_stmt.condition = condition;
-    node->as.if_stmt.then_branch = then_branch;
-    node->as.if_stmt.else_branch = else_branch;
+    node->as.if_stmt = (IfNode) {
+        .condition = condition,
+        .then_branch = then_branch,
+        .else_branch = else_branch
+    };
+
     return node;
 }
 
@@ -128,10 +152,13 @@ ASTNode* create_for_node(ASTNode* init, ASTNode* condition, ASTNode* increment, 
     node->type = AST_FOR;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.for_stmt.init = init;
-    node->as.for_stmt.condition = condition;
-    node->as.for_stmt.update = increment;
-    node->as.for_stmt.body = body;
+    node->as.for_stmt = (ForNode) {
+        .init = init,
+        .condition = condition,
+        .update = increment,
+        .body = body
+    };
+
     return node;
 }
 
@@ -143,8 +170,11 @@ ASTNode* create_while_node(ASTNode* condition, ASTNode* body) {
     node->type = AST_WHILE;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.while_stmt.condition = condition;
-    node->as.while_stmt.body = body;
+    node->as.while_stmt = (WhileNode) {
+        .condition = condition,
+        .body = body
+    };
+
     return node;
 }
 
@@ -156,7 +186,10 @@ ASTNode* create_identifier_node(char* name) {
     node->type = AST_IDENTIFIER;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.identifier.name = name;
+    node->as.identifier = (IdentifierNode) {
+        .name = name
+    };
+
     return node;
 }
 
@@ -168,7 +201,10 @@ ASTNode* create_int_literal_node(long long value) {
     node->type = AST_INT_LITERAL;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.int_literal.value = value;
+    node->as.int_literal = (IntLiteralNode) {
+        .value = value
+    };
+
     return node;
 }
 
@@ -180,7 +216,10 @@ ASTNode* create_float_literal_node(float value) {
     node->type = AST_FLOAT_LITERAL;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.float_literal.value = value;
+    node->as.float_literal = (FloatLiteralNode) {
+        .value = value
+    };
+
     return node;
 }
 
@@ -192,7 +231,10 @@ ASTNode* create_double_literal_node(double value) {
     node->type = AST_DOUBLE_LITERAL;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.double_literal.value = value;
+    node->as.double_literal = (DoubleLiteralNode) {
+        .value = value
+    };
+
     return node;
 }
 
@@ -204,8 +246,11 @@ ASTNode* create_string_literal_node(char* value) {
     node->type = AST_STRING_LITERAL;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.string_literal.value = value;
-    node->as.string_literal.length = strlen(value);
+    node->as.string_literal = (StringLiteralNode) {
+        .value = value,
+        .length = strlen(value)
+    };
+
     return node;
 }
 
@@ -217,7 +262,10 @@ ASTNode* create_char_literal_node(char value) {
     node->type = AST_CHAR_LITERAL;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.char_literal.value = value;
+    node->as.char_literal = (CharLiteralNode) {
+        .value = value
+    };
+
     return node;
 }
 
@@ -229,9 +277,12 @@ ASTNode* create_func_call_node(char* name) {
     node->type = AST_FUNC_CALL;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.func_call.name = name;
-    node->as.func_call.args = NULL;
-    node->as.func_call.arg_count = 0;
+    node->as.func_call = (FuncCallNode) {
+        .name = name,
+        .args = NULL,
+        .arg_count = 0
+    };
+
     return node;
 }
 
@@ -243,8 +294,11 @@ ASTNode* create_unary_op_node(UnaryOP op, ASTNode* operand) {
     node->type = AST_UNARY_OP;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.unary_op.op = op;
-    node->as.unary_op.operand = operand;
+    node->as.unary_op = (UnaryOpNode) {
+        .op = op,
+        .operand = operand
+    };
+
     return node;
 }
 
@@ -256,9 +310,12 @@ ASTNode* create_binary_op_node(BinaryOp op, ASTNode* left, ASTNode* right) {
     node->type = AST_BINARY_OP;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.binary_op.op = op;
-    node->as.binary_op.left = left;
-    node->as.binary_op.right = right;
+    node->as.binary_op = (BinaryOpNode) {
+        .op = op,
+        .left = left,
+        .right = right
+    };
+
     return node;
 }
 
@@ -270,8 +327,11 @@ ASTNode* create_cast_node(TypeInfo target_type, ASTNode* expr) {
     node->type = AST_CAST;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.cast.target_type = target_type;
-    node->as.cast.expr = expr;
+    node->as.cast = (CastNode) {
+        .target_type = target_type,
+        .expr = expr
+    };
+
     return node;
 }
 
@@ -283,8 +343,11 @@ ASTNode* create_member_access_node(ASTNode* object, char* member) {
     node->type = AST_MEMBER_ACCESS;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.member_access.object = object;
-    node->as.member_access.member = member;
+    node->as.member_access = (MemberAccessNode) {
+        .object = object,
+        .member = member
+    };
+
     return node;
 }
 
@@ -296,9 +359,12 @@ ASTNode* create_struct_decl_node(char* type) {
     node->type = AST_STRUCT_DECL;
     node->line = current_token()->line;
     node->column = current_token()->column;
-    node->as.struct_decl.type = type;
-    node->as.struct_decl.members = NULL;
-    node->as.struct_decl.member_count = 0;
+    node->as.struct_decl = (StructDeclNode) {
+        .type = type,
+        .members = NULL,
+        .member_count = 0
+    };
+    
     return node;
 }
 
