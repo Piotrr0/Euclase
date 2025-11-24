@@ -1,7 +1,7 @@
 #include "tests.h"
 #include "lexer.h"
 #include "parser.h"
-#include "codegen.h"
+#include "codegen_visitor.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -336,7 +336,7 @@ int run_test(const char* test)
 
     print_ast(root, 0);
 
-    generate_llvm_ir(root, "main", "output.ll");
+    generate_llvm_ir_visitor(root, "main", "output.ll");
     free_ast(root);
 
     return run_llvm_and_get_exit_code("output.ll");
