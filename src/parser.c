@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-Parser parser;
-
 static void free_node_array(ASTNode** array, int count) {
     if (array == NULL)
         return;
@@ -119,25 +117,53 @@ void free_ast(ASTNode* node) {
     free(node);
 }
 
-void advance() {
-    if (parser.current_token < parser.tokens->token_count - 1)
-        parser.current_token++;
+void init_parser(Parser* parser, Tokens* tokens) {
+    if (parser == NULL || tokens == NULL)
+        return;
+
+    parser->tokens = tokens;
+    parser->current_token = 0;
 }
 
-int match(TokenType type) {
-    if (current_token()->type == type) {
-        advance();
+void advance(Parser* parser) {
+    if (parser == NULL)
+        return;
+
+    if (parser->current_token < parser->tokens->token_count - 1)
+        parser->current_token++;
+}
+
+Token* current_token(Parser* parser)
+{
+    if (parser->current_token >= parser->tokens->token_count)
+        return &parser->tokens->tokens[parser->tokens->token_count - 1];
+
+    return &parser->tokens->tokens[parser->current_token];
+}
+
+Token* peek_token(Parser* parser, int offset)
+{
+    int pos = parser->current_token + offset;
+    if (pos >= parser->tokens->token_count)
+        return &parser->tokens->tokens[parser->tokens->token_count - 1];
+
+    return &parser->tokens->tokens[pos];
+}
+
+int match(Parser* parser, TokenType type) {
+    if (current_token(parser)->type == type) {
+        advance(parser);
         return 1;
     }
     return 0;
 }
 
-int check(TokenType type) {
-    return current_token()->type == type;
+int check(Parser* parser, TokenType type) {
+    return current_token(parser)->type == type;
 }
 
-int is_type(TokenType t) {
-    if (t == TOK_IDENTIFIER && peek_token(1)->type == TOK_IDENTIFIER)
+int is_type(Parser* parser, TokenType t) {
+    if (t == TOK_IDENTIFIER && peek_token(parser, 1)->type == TOK_IDENTIFIER)
         return 1;
 
     switch(t) {
@@ -148,16 +174,16 @@ int is_type(TokenType t) {
     }
 }
 
-int parse_pointer_level() {
+int parse_pointer_level(Parser* parser) {
     int level = 0;
-    while (match(TOK_MULTIPLICATION)) {
+    while (match(parser, TOK_MULTIPLICATION)) {
         level++;
     }
     return level;
 }
 
-ASTNode* parse_compound_operators() {
-    ASTNode* lhs = parse_expression();
+ASTNode* parse_compound_operators(Parser* parser) {
+    ASTNode* lhs = parse_expression(parser);
     if (lhs == NULL)
         return NULL;
 
@@ -166,7 +192,7 @@ ASTNode* parse_compound_operators() {
         return NULL;
     }
 
-    TokenType op_tok = current_token()->type;
+    TokenType op_tok = current_token(parser)->type;
     BinaryOp op;
 
     switch(op_tok) {
@@ -178,14 +204,14 @@ ASTNode* parse_compound_operators() {
         default: free_ast(lhs); return NULL;
     }
 
-    advance();
-    ASTNode* rhs = parse_expression();
+    advance(parser);
+    ASTNode* rhs = parse_expression(parser);
     if (rhs == NULL) {
         free_ast(lhs);
         return NULL;
     }
 
-    if (!match(TOK_SEMICOLON)) {
+    if (!match(parser, TOK_SEMICOLON)) {
         free_ast(lhs);
         free_ast(rhs);
         return NULL;
@@ -193,7 +219,7 @@ ASTNode* parse_compound_operators() {
     
     ASTNode* lhs_copy = NULL;
     if (lhs->type == AST_IDENTIFIER) {
-        lhs_copy = create_identifier_node(strdup(lhs->as.identifier.name));
+        lhs_copy = create_identifier_node(strdup(lhs->as.identifier.name), current_token(parser)->line, current_token(parser)->column);
     }
     
     if (lhs_copy == NULL) {
@@ -202,33 +228,33 @@ ASTNode* parse_compound_operators() {
         return NULL;
     }
     
-    ASTNode* binary_node = create_binary_op_node(op, lhs_copy, rhs);
-    ASTNode* assign_node = create_assign_node(lhs, binary_node);
+    ASTNode* binary_node = create_binary_op_node(op, lhs_copy, rhs, current_token(parser)->line, current_token(parser)->column);
+    ASTNode* assign_node = create_assign_node(lhs, binary_node, current_token(parser)->line, current_token(parser)->column);
     return assign_node;
 }
 
-ASTNode* parse_expression() 
+ASTNode* parse_expression(Parser* parser) 
 {
-    return parse_assignment();
+    return parse_assignment(parser);
 }
 
-ASTNode* parse_assignment()
+ASTNode* parse_assignment(Parser* parser)
 {
-    ASTNode* left = parse_equality();
+    ASTNode* left = parse_equality(parser);
     if (left == NULL) 
         return NULL;
     
-    while (check(TOK_ASSIGNMENT) || is_compound_token(current_token()->type))
+    while (check(parser, TOK_ASSIGNMENT) || is_compound_token(current_token(parser)->type))
     {
         if (left->type != AST_IDENTIFIER && left->type != AST_MEMBER_ACCESS && (left->type != AST_UNARY_OP || left->as.unary_op.op != OP_DEREF)) {
             free_ast(left);
             return NULL;
         }
+
+        TokenType op_tok = current_token(parser)->type;
+        advance(parser);
         
-        TokenType op_tok = current_token()->type;
-        advance();
-        
-        ASTNode* right = parse_assignment();
+        ASTNode* right = parse_assignment(parser);
         if (right == NULL) {
             free_ast(left);
             return NULL;
@@ -241,7 +267,7 @@ ASTNode* parse_assignment()
             case TOK_ASSIGNMENT_MULTIPLICATION: op = OP_MUL; break;
             case TOK_ASSIGNMENT_DIVISION:       op = OP_DIV; break;
             case TOK_ASSIGNMENT_MODULO:         op = OP_MOD; break;
-            case TOK_ASSIGNMENT:                return create_assign_node(left, right);
+            case TOK_ASSIGNMENT:                return create_assign_node(left, right, current_token(parser)->line, current_token(parser)->column);
             default: free_ast(left); free_ast(right); return NULL;
         }
         
@@ -250,37 +276,37 @@ ASTNode* parse_assignment()
             return NULL;
         }
 
-        ASTNode* left_copy = create_identifier_node(strdup(left->as.identifier.name));
+        ASTNode* left_copy = create_identifier_node(strdup(left->as.identifier.name), current_token(parser)->line, current_token(parser)->column);
         if (left_copy == NULL) {
             free_ast(left);
             free_ast(right);
             return NULL;
         }
         
-        ASTNode* binary_node = create_binary_op_node(op, left_copy, right);
-        return create_assign_node(left, binary_node);
+        ASTNode* binary_node = create_binary_op_node(op, left_copy, right, current_token(parser)->line, current_token(parser)->column);
+        return create_assign_node(left, binary_node, current_token(parser)->line, current_token(parser)->column);
     }
     
     return left;
 }
 
-ASTNode* parse_equality()
+ASTNode* parse_equality(Parser* parser)
 {
-    ASTNode* left = parse_additive();
+    ASTNode* left = parse_additive(parser);
     if (left == NULL) 
         return NULL;
-    
-    while (check(TOK_EQUAL) || check(TOK_NOT_EQUAL) || check(TOK_LESS) || check(TOK_GREATER) || check(TOK_LESS_EQUALS) || check(TOK_GREATER_EQUALS))
+
+    while (check(parser, TOK_EQUAL) || check(parser, TOK_NOT_EQUAL) || check(parser, TOK_LESS) || check(parser, TOK_GREATER) || check(parser, TOK_LESS_EQUALS) || check(parser, TOK_GREATER_EQUALS))
     {
-        TokenType op = current_token()->type;
-        advance();
-        
-        ASTNode* right = parse_additive();
+        TokenType op = current_token(parser)->type;
+        advance(parser);
+
+        ASTNode* right = parse_additive(parser);
         if (right == NULL) {
             free_ast(left);
             return NULL;
         }
-        
+
         BinaryOp binary_op;
         switch(op) {
             case TOK_EQUAL:          binary_op = OP_EQ; break;
@@ -292,29 +318,29 @@ ASTNode* parse_equality()
             default:                 binary_op = OP_EQ; break;
         }
         
-        left = create_binary_op_node(binary_op, left, right);
+        left = create_binary_op_node(binary_op, left, right, current_token(parser)->line, current_token(parser)->column);
     }
     
     return left;
 }
 
-ASTNode* parse_additive()
+ASTNode* parse_additive(Parser* parser)
 {
-    ASTNode* left = parse_multiplicative();
+    ASTNode* left = parse_multiplicative(parser);
     if (left == NULL) 
         return NULL;
-    
-    while (check(TOK_ADDITION) || check(TOK_SUBTRACTION))
+
+    while (check(parser, TOK_ADDITION) || check(parser, TOK_SUBTRACTION))
     {
-        TokenType op = current_token()->type;
-        advance();
+        TokenType op = current_token(parser)->type;
+        advance(parser);
         
-        ASTNode* right = parse_multiplicative();
+        ASTNode* right = parse_multiplicative(parser);
         if (right == NULL) {
             free_ast(left);
             return NULL;
         }
-        
+
         BinaryOp binary_op;
         switch(op) 
         {
@@ -323,29 +349,29 @@ ASTNode* parse_additive()
             default:                binary_op = OP_ADD; break;
         }
 
-        left = create_binary_op_node(binary_op, left, right);
+        left = create_binary_op_node(binary_op, left, right, current_token(parser)->line, current_token(parser)->column);
     }
     
     return left;
 }
 
-ASTNode* parse_multiplicative() 
+ASTNode* parse_multiplicative(Parser* parser) 
 {
-    ASTNode* left = parse_unary();
+    ASTNode* left = parse_unary(parser);
     if (left == NULL) 
         return NULL;
     
-    while (check(TOK_MULTIPLICATION) || check(TOK_DIVISION) || check(TOK_MODULO))
+    while (check(parser, TOK_MULTIPLICATION) || check(parser, TOK_DIVISION) || check(parser, TOK_MODULO))
     {
-        TokenType op = current_token( )->type;
-        advance();
-        
-        ASTNode* right = parse_unary();
+        TokenType op = current_token(parser)->type;
+        advance(parser);
+
+        ASTNode* right = parse_unary(parser);
         if (right == NULL) {
             free_ast(left);
             return NULL;
         }
-        
+
         BinaryOp binary_op;
         switch(op)
         {
@@ -355,20 +381,20 @@ ASTNode* parse_multiplicative()
             default:                 binary_op = OP_MUL; break;
         }
         
-        left = create_binary_op_node(binary_op, left, right);
+        left = create_binary_op_node(binary_op, left, right, current_token(parser)->line, current_token(parser)->column);
     }
-    
+
     return left;
 }
 
-ASTNode* parse_negation() {
-    advance();
-    ASTNode* unary_expression = parse_unary();
+ASTNode* parse_negation(Parser* parser) {
+    advance(parser);
+    ASTNode* unary_expression = parse_unary(parser);
     if (unary_expression == NULL) {
         return NULL;
     }
-        
-    ASTNode* unary_minus_node = create_unary_op_node(OP_NEG, unary_expression);
+
+    ASTNode* unary_minus_node = create_unary_op_node(OP_NEG, unary_expression, current_token(parser)->line, current_token(parser)->column);
     if (unary_minus_node == NULL) {
         free_ast(unary_expression);
         return NULL;
@@ -377,41 +403,41 @@ ASTNode* parse_negation() {
     return unary_minus_node;
 }
 
-ASTNode* parse_pre_decrement() {
-    if (!match(TOK_DECREMENT))
+ASTNode* parse_pre_decrement(Parser* parser) {
+    if (!match(parser, TOK_DECREMENT))
         return NULL;
 
-    ASTNode* node = parse_unary();
+    ASTNode* node = parse_unary(parser);
     if (node == NULL)
         return NULL;
 
-    ASTNode* dec = create_unary_op_node(OP_PRE_DEC, node);
+    ASTNode* dec = create_unary_op_node(OP_PRE_DEC, node, current_token(parser)->line, current_token(parser)->column);
     if (dec == NULL)
         free_ast(node);
     
     return dec;
 }
 
-ASTNode* parse_pre_increment() {
-    if (!match(TOK_INCREMENT))
+ASTNode* parse_pre_increment(Parser* parser) {
+    if (!match(parser, TOK_INCREMENT))
         return NULL;
 
-    ASTNode* node = parse_unary();
+    ASTNode* node = parse_unary(parser);
     if (node == NULL)
         return NULL;
 
-    ASTNode* inc = create_unary_op_node(OP_PRE_INC, node);
+    ASTNode* inc = create_unary_op_node(OP_PRE_INC, node, current_token(parser)->line, current_token(parser)->column);
     if (inc == NULL)
         free_ast(node);
     
     return inc;
 }
 
-ASTNode* parse_post_increment(ASTNode* operand) {
-    if (!match(TOK_INCREMENT))
+ASTNode* parse_post_increment(Parser* parser, ASTNode* operand) {
+    if (!match(parser, TOK_INCREMENT))
         return operand;
 
-    ASTNode* inc = create_unary_op_node(OP_POST_INC, operand);
+    ASTNode* inc = create_unary_op_node(OP_POST_INC, operand, current_token(parser)->line, current_token(parser)->column);
     if (inc == NULL) {
         free_ast(operand);
         return NULL;
@@ -420,11 +446,11 @@ ASTNode* parse_post_increment(ASTNode* operand) {
     return inc;
 }
 
-ASTNode* parse_post_decrement(ASTNode* operand) {
-    if (!match(TOK_DECREMENT))
+ASTNode* parse_post_decrement(Parser* parser, ASTNode* operand) {
+    if (!match(parser, TOK_DECREMENT))
         return operand;
 
-    ASTNode* dec = create_unary_op_node(OP_POST_DEC, operand);
+    ASTNode* dec = create_unary_op_node(OP_POST_DEC, operand, current_token(parser)->line, current_token(parser)->column);
     if (dec == NULL) {
         free_ast(operand);
         return NULL;
@@ -433,76 +459,76 @@ ASTNode* parse_post_decrement(ASTNode* operand) {
     return dec;
 }
 
-ASTNode* parse_unary()
+ASTNode* parse_unary(Parser* parser)
 {
-    switch (current_token()->type) {
-        case TOK_SUBTRACTION:       return parse_negation();
-        case TOK_MULTIPLICATION:    return parse_dereference();
-        case TOK_AMPERSAND:         return parse_address_of();
-        case TOK_INCREMENT:         return parse_pre_increment();
-        case TOK_DECREMENT:         return parse_pre_decrement();
+    switch (current_token(parser)->type) {
+        case TOK_SUBTRACTION:       return parse_negation(parser);
+        case TOK_MULTIPLICATION:    return parse_dereference(parser);
+        case TOK_AMPERSAND:         return parse_address_of(parser);
+        case TOK_INCREMENT:         return parse_pre_increment(parser);
+        case TOK_DECREMENT:         return parse_pre_decrement(parser);
 
         default: break;
     }
 
-    if (is_casting())
-        return parse_casting();
+    if (is_casting(parser))
+        return parse_casting(parser);
 
-    return parse_postfix();
+    return parse_postfix(parser);
 }
 
-ASTNode* parse_postfix()
+ASTNode* parse_postfix(Parser* parser)
 {
     ASTNode* node = NULL;
-    if (is_func_call())
-        node = parse_function_call();
+    if (is_func_call(parser))
+        node = parse_function_call(parser);
     else
-         node = parse_primary();
+         node = parse_primary(parser);
 
-    while (check(TOK_DOT)) {
-        advance();
+    while (check(parser, TOK_DOT)) {
+        advance(parser);
         
-        if (!check(TOK_IDENTIFIER)) {
+        if (!check(parser, TOK_IDENTIFIER)) {
             free_ast(node);
             return NULL;
         }
         
-        ASTNode* member_access = create_member_access_node(node, sv_to_owned_cstr(current_token()->lexeme));
+        ASTNode* member_access = create_member_access_node(node, sv_to_owned_cstr(current_token(parser)->lexeme), current_token(parser)->line, current_token(parser)->column);
         if (member_access == NULL) {
             free_ast(node);
             return NULL;
         }
 
-        advance();
+        advance(parser);
         node = member_access;
     }
     
-    if (check(TOK_INCREMENT))
-        node = parse_post_increment(node);
-    else if (check(TOK_DECREMENT))
-        node = parse_post_decrement(node);
+    if (check(parser, TOK_INCREMENT))
+        node = parse_post_increment(parser, node);
+    else if (check(parser, TOK_DECREMENT))
+        node = parse_post_decrement(parser, node);
     
     return node;
 }
 
-ASTNode* parse_primary()
+ASTNode* parse_primary(Parser* parser)
 {
-    if (check(TOK_IDENTIFIER))
-        return parse_identifier_expression();
+    if (check(parser, TOK_IDENTIFIER))
+        return parse_identifier_expression(parser);
     
-    return parse_primary_expression();
+    return parse_primary_expression(parser);
 }
 
-ASTNode* parse_parens() {
-    if (!check(TOK_LPAREN)) 
+ASTNode* parse_parens(Parser* parser) {
+    if (!check(parser, TOK_LPAREN)) 
         return NULL;
 
-    advance();
-    ASTNode* node = parse_expression();
+    advance(parser);
+    ASTNode* node = parse_expression(parser);
     if (node == NULL)
         return NULL;
 
-    if (!match(TOK_RPAREN)) {
+    if (!match(parser, TOK_RPAREN)) {
         printf("Parse error: expected ')'\n");
         free_ast(node);
         return NULL;
@@ -510,95 +536,95 @@ ASTNode* parse_parens() {
     return node;
 }
 
-ASTNode* parse_primary_expression() {
-    ASTNode* paren = parse_parens();
+ASTNode* parse_primary_expression(Parser* parser) {
+    ASTNode* paren = parse_parens(parser);
     if(paren != NULL)
         return paren;
 
-    switch (current_token()->type)
+    switch (current_token(parser)->type)
     {
-        case TOK_CHAR_LITERAL:      return parse_char_literal();
-        case TOK_STRING_LITERAL:    return parse_string_literal();
+        case TOK_CHAR_LITERAL:      return parse_char_literal(parser);
+        case TOK_STRING_LITERAL:    return parse_string_literal(parser);
         case TOK_NUMBER_INT:
         case TOK_NUMBER_FLOAT:
-        case TOK_NUMBER_DOUBLE:     return parse_number_literal();
+        case TOK_NUMBER_DOUBLE:     return parse_number_literal(parser);
         default: printf("Parse error: expected primary expression\n");
     }
     return NULL;
 }
 
-ASTNode* parse_number_literal() {
-    if (!(check(TOK_NUMBER_INT) || check(TOK_NUMBER_DOUBLE) || check(TOK_NUMBER_FLOAT)))
+ASTNode* parse_number_literal(Parser* parser) {
+    if (!(check(parser, TOK_NUMBER_INT) || check(parser, TOK_NUMBER_DOUBLE) || check(parser, TOK_NUMBER_FLOAT)))
         return NULL;
     
-    const char* number = sv_to_owned_cstr(current_token()->lexeme);
+    const char* number = sv_to_owned_cstr(current_token(parser)->lexeme);
 
     ASTNode* result = NULL;
-    switch (current_token()->type)
+    switch (current_token(parser)->type)
     {
         case TOK_NUMBER_INT: {
             long long int_val = atoll(number);
-            result = create_int_literal_node(int_val);
+            result = create_int_literal_node(int_val, current_token(parser)->line, current_token(parser)->column);
             break;
         }
         case TOK_NUMBER_FLOAT: {
             float float_val = atof(number);
-            result = create_float_literal_node(float_val);
+            result = create_float_literal_node(float_val, current_token(parser)->line, current_token(parser)->column);
             break;
         }
         case TOK_NUMBER_DOUBLE: {
             double double_val = atof(number);
-            result = create_double_literal_node(double_val);
+            result = create_double_literal_node(double_val, current_token(parser)->line, current_token(parser)->column);
             break;
         }
 
         default: break;
     }
     
-    advance();
+    advance(parser);
     free((char*)number);
     return result;
 }
 
-ASTNode* parse_string_literal() {
-    if (!check(TOK_STRING_LITERAL))
+ASTNode* parse_string_literal(Parser* parser) {
+    if (!check(parser, TOK_STRING_LITERAL))
         return NULL;
 
-    char* string = sv_to_owned_cstr(current_token()->lexeme);
-    advance();
+    char* string = sv_to_owned_cstr(current_token(parser)->lexeme);
+    advance(parser);
 
-    return create_string_literal_node(string);;
+    return create_string_literal_node(string, current_token(parser)->line, current_token(parser)->column);;
 }
 
-ASTNode* parse_char_literal() {
-    if (!check(TOK_CHAR_LITERAL))
+ASTNode* parse_char_literal(Parser* parser) {
+    if (!check(parser, TOK_CHAR_LITERAL))
         return NULL;
 
-    char ch = current_token()->lexeme.data[0];
-    advance();
+    char ch = current_token(parser)->lexeme.data[0];
+    advance(parser);
 
-    return create_char_literal_node(ch);
+    return create_char_literal_node(ch, current_token(parser)->line, current_token(parser)->column);
 }
 
-ASTNode* parse_identifier_expression()
+ASTNode* parse_identifier_expression(Parser* parser)
 {
-    ASTNode* node = create_identifier_node(sv_to_owned_cstr(current_token()->lexeme));
-    advance();
+    ASTNode* node = create_identifier_node(sv_to_owned_cstr(current_token(parser)->lexeme), current_token(parser)->line, current_token(parser)->column);
+    advance(parser);
     return node;
 }
 
-ASTNode* parse_dereference()
+ASTNode* parse_dereference(Parser* parser)
 {
-    if(!check(TOK_MULTIPLICATION))
+    if(!check(parser, TOK_MULTIPLICATION))
         return NULL;
 
-    advance();
-    ASTNode* expr = parse_unary();
+    advance(parser);
+    ASTNode* expr = parse_unary(parser);
     if (expr == NULL) {
         return NULL;
     }
 
-    ASTNode* node = create_unary_op_node(OP_DEREF, expr);
+    ASTNode* node = create_unary_op_node(OP_DEREF, expr, current_token(parser)->line, current_token(parser)->column);
     if(node == NULL) {
         free_ast(expr);
         return NULL;
@@ -607,13 +633,13 @@ ASTNode* parse_dereference()
     return node;
 }
 
-ASTNode* parse_address_of() {
-    if(!check(TOK_AMPERSAND))
+ASTNode* parse_address_of(Parser* parser) {
+    if(!check(parser, TOK_AMPERSAND))
         return NULL;
 
-    advance();
-    ASTNode* expr = parse_unary();
-    ASTNode* node = create_unary_op_node(OP_ADDR, expr);
+    advance(parser);
+    ASTNode* expr = parse_unary(parser);
+    ASTNode* node = create_unary_op_node(OP_ADDR, expr, current_token(parser)->line, current_token(parser)->column);
     if (node == NULL) {
         free_ast(expr);
         return NULL;
@@ -624,32 +650,32 @@ ASTNode* parse_address_of() {
 
 // int x = sum(10, 10); 
 // int x = sum(10, &a);
-ASTNode* parse_function_call()
+ASTNode* parse_function_call(Parser* parser)
 {
-    if(!check(TOK_IDENTIFIER)) {
+    if(!check(parser, TOK_IDENTIFIER)) {
         return NULL;
     }
 
-    char* name = sv_to_owned_cstr(current_token()->lexeme);
+    char* name = sv_to_owned_cstr(current_token(parser)->lexeme);
     if (name == NULL)
         return NULL;
 
-    advance();
+    advance(parser);
 
-    if(!match(TOK_LPAREN)) {
+    if(!match(parser, TOK_LPAREN)) {
         free(name);
         return NULL;
     }
 
-    ASTNode* func_call = create_func_call_node(name);
+    ASTNode* func_call = create_func_call_node(name, current_token(parser)->line, current_token(parser)->column);
     if (func_call == NULL) {
         free(name);
         return NULL;
     }
 
-    while (!check(TOK_RPAREN) && !check(TOK_EOF))
+    while (!check(parser, TOK_RPAREN) && !check(parser, TOK_EOF))
     {
-        ASTNode* arg = parse_expression();
+        ASTNode* arg = parse_expression(parser);
         if(arg == NULL) {
             printf("Parse error: expected expression in function argument\n");
             return func_call;
@@ -657,12 +683,12 @@ ASTNode* parse_function_call()
 
         add_arg_to_func_call(func_call, arg);
 
-        if (!match(TOK_COMMA)) {
+        if (!match(parser, TOK_COMMA)) {
             break;
         }
     }
 
-    if(!match(TOK_RPAREN)) {
+    if(!match(parser, TOK_RPAREN)) {
         printf("Parse error: expected ')' after function arguments\n");
         return func_call;
     }
@@ -672,32 +698,32 @@ ASTNode* parse_function_call()
 
 // float pi = 3.14f;
 // int v = (int) pi;
-ASTNode* parse_casting()
+ASTNode* parse_casting(Parser* parser)
 {
-    if(!match(TOK_LPAREN)) {
+    if(!match(parser, TOK_LPAREN)) {
         printf("Parse error: expected: '('\n");
         return NULL;
     }
 
-    if(!is_type(current_token()->type)) {
+    if(!is_type(parser, current_token(parser)->type)) {
         printf("Parse error: expected: 'TYPE'\n");
         return NULL;
     }
 
-    TypeInfo cast_type = parse_type(); 
+    TypeInfo cast_type = parse_type(parser); 
 
-    if(!match(TOK_RPAREN)) {
+    if(!match(parser, TOK_RPAREN)) {
         printf("Parse error: expected: ')'\n");
         return NULL;
     }
 
-    ASTNode* expr = parse_unary();
+    ASTNode* expr = parse_unary(parser);
     if(expr == NULL) {
         printf("Parse error: expected expression after cast\n");
         return NULL;
     }
 
-    ASTNode* cast_node = create_cast_node(cast_type, expr);
+    ASTNode* cast_node = create_cast_node(cast_type, expr, current_token(parser)->line, current_token(parser)->column);
     if(cast_node == NULL) {
         free_ast(expr);
         printf("Memory allocation failed\n");
@@ -707,18 +733,18 @@ ASTNode* parse_casting()
     return cast_node;
 }
 
-TypeInfo parse_type()
+TypeInfo parse_type(Parser* parser)
 {
-    if (!is_type(current_token()->type)) {
+    if (!is_type(parser, current_token(parser)->type)) {
         printf("Parse error: expected return type\n");
         exit(1);
     }
 
-    TokenType ret_type = current_token()->type;
-    char* type = sv_to_owned_cstr(current_token()->lexeme);
-    advance();
+    TokenType ret_type = current_token(parser)->type;
+    char* type = sv_to_owned_cstr(current_token(parser)->lexeme);
+    advance(parser);
 
-    int pointer_level = parse_pointer_level();
+    int pointer_level = parse_pointer_level(parser);
 
     TypeInfo info = { 
         .base_type = ret_type, 
@@ -729,12 +755,12 @@ TypeInfo parse_type()
     return info;
 }
 
-int is_func_call()
+int is_func_call(Parser* parser)
 {
-    if(!check(TOK_IDENTIFIER))
+    if(!check(parser, TOK_IDENTIFIER))
         return 0;
 
-    Token* lparen_token = peek_token(1);
+    Token* lparen_token = peek_token(parser, 1);
     if(lparen_token->type != TOK_LPAREN) {
         return 0;
     }
@@ -742,99 +768,99 @@ int is_func_call()
     return 1;
 }
 
-int is_casting() {
-    if(!check(TOK_LPAREN))
-        return 0;
-
-    Token* type_token = peek_token(1);
-    if(!is_type(type_token->type))
-        return 0;
-
-    int pointer_level = check_pointer_level(2);
-    Token* rparen_token = peek_token(2 + pointer_level);
-
-    return (rparen_token->type == TOK_RPAREN);
-}
-
-int check_pointer_level(int offset) 
+int check_pointer_level(Parser* parser, int offset) 
 {
     int starting_offset = offset; 
-    Token* next_token = peek_token(offset);
+    Token* next_token = peek_token(parser, offset);
 
     while(next_token->type == TOK_MULTIPLICATION) {
-        next_token = peek_token(++offset);
+        next_token = peek_token(parser, ++offset);
     }
     
     return offset - starting_offset;
 }
 
-ASTNode* parse_while_loop() {
-    if (!match(TOK_WHILE))
+int is_casting(Parser* parser) {
+    if(!check(parser, TOK_LPAREN))
+        return 0;
+
+    Token* type_token = peek_token(parser, 1);
+    if(!is_type(parser, type_token->type))
+        return 0;
+
+    int pointer_level = check_pointer_level(parser, 2);
+    Token* rparen_token = peek_token(parser, 2 + pointer_level);
+
+    return (rparen_token->type == TOK_RPAREN);
+}
+
+ASTNode* parse_while_loop(Parser* parser) {
+    if (!match(parser, TOK_WHILE))
         return NULL;
 
-    if (!match(TOK_LPAREN))
+    if (!match(parser, TOK_LPAREN))
         return NULL;
 
-    ASTNode* condition = parse_expression();
+    ASTNode* condition = parse_expression(parser);
     if(condition == NULL) {
         free_ast(condition);
         return NULL;
     }
 
-    if (!match(TOK_RPAREN)) {
+    if (!match(parser, TOK_RPAREN)) {
         free_ast(condition);
         return NULL;
     }
 
-    ASTNode* body = parse_block();
+    ASTNode* body = parse_block(parser);
     if(body == NULL) {
         free_ast(condition);
         return NULL;
     }
 
-    return create_while_node(condition, body);
+    return create_while_node(condition, body, current_token(parser)->line, current_token(parser)->column);
 }
 
-ASTNode* parse_for_loop() {
-    if (!match(TOK_FOR))
+ASTNode* parse_for_loop(Parser* parser) {
+    if (!match(parser, TOK_FOR))
         return NULL;
 
-    if (!match(TOK_LPAREN))
+    if (!match(parser, TOK_LPAREN))
         return NULL;
 
     ASTNode* init = NULL;
-    if (!check(TOK_SEMICOLON)) {
-        init = parse_loop_init();
+    if (!check(parser, TOK_SEMICOLON)) {
+        init = parse_loop_init(parser);
         if (init == NULL) {
             return NULL;
         }
     }
 
     if (init == NULL || init->type != AST_VAR_DECL) {
-        if (!match(TOK_SEMICOLON)) {
+        if (!match(parser, TOK_SEMICOLON)) {
             free_ast(init);
             return NULL;
         }
     }
         
     ASTNode* condition = NULL;
-    if (!check(TOK_SEMICOLON)) {
-        condition = parse_expression();
+    if (!check(parser, TOK_SEMICOLON)) {
+        condition = parse_expression(parser);
         if (condition == NULL) {
             free_ast(init);
             return NULL;
         }
     }
 
-    if (!match(TOK_SEMICOLON)) {
+    if (!match(parser, TOK_SEMICOLON)) {
         free_ast(init);
         free_ast(condition);
         return NULL;
     }
 
     ASTNode* update = NULL;
-    if (!check(TOK_RPAREN)) {
-        update = parse_loop_update();
+    if (!check(parser, TOK_RPAREN)) {
+        update = parse_loop_update(parser);
         if (update == NULL) {
             free_ast(init);
             free_ast(condition);
@@ -842,14 +868,14 @@ ASTNode* parse_for_loop() {
         }
     }
 
-    if(!match(TOK_RPAREN)) {
+    if(!match(parser, TOK_RPAREN)) {
         free_ast(init);
         free_ast(condition);
         free_ast(update);
         return NULL;
     }
 
-    ASTNode* body = parse_block();
+    ASTNode* body = parse_block(parser);
     if(body == NULL) {
         free_ast(init);
         free_ast(condition);
@@ -857,31 +883,31 @@ ASTNode* parse_for_loop() {
         return NULL;
     }
 
-    return create_for_node(init, condition, update, body);
+    return create_for_node(init, condition, update, body, current_token(parser)->line, current_token(parser)->column);
 }
 
-ASTNode* parse_loop_init() {
+ASTNode* parse_loop_init(Parser* parser) {
     ASTNode* init = NULL;
 
-    if (is_type(current_token()->type))
-        init = parse_variable_declaration();
-    else if (check(TOK_IDENTIFIER) || check(TOK_MULTIPLICATION))
-        init = parse_assignment();
+    if (is_type(parser, current_token(parser)->type))
+        init = parse_variable_declaration(parser);
+    else if (check(parser, TOK_IDENTIFIER) || check(parser, TOK_MULTIPLICATION))
+        init = parse_assignment(parser);
 
     return init;
 }
 
-ASTNode* parse_loop_condition() {
+ASTNode* parse_loop_condition(Parser* parser) {
 
     ASTNode* condition = NULL;
-    if (!check(TOK_SEMICOLON))
+    if (!check(parser, TOK_SEMICOLON))
     {
-        condition = parse_expression();
+        condition = parse_expression(parser);
         if(condition == NULL)
             return NULL;
     }
     
-    if (!match(TOK_SEMICOLON)) {
+    if (!match(parser, TOK_SEMICOLON)) {
         free_ast(condition);
         return NULL;
     }
@@ -889,67 +915,67 @@ ASTNode* parse_loop_condition() {
     return condition;
 }
 
-ASTNode* parse_loop_update()
+ASTNode* parse_loop_update(Parser* parser)
 {
-    ASTNode* lhs = parse_expression();
+    ASTNode* lhs = parse_expression(parser);
     if (lhs == NULL)
         return NULL;
     
-    if (!match(TOK_ASSIGNMENT)) {
+    if (!match(parser, TOK_ASSIGNMENT)) {
         return lhs;
     }
     
-    ASTNode* rhs = parse_expression();
+    ASTNode* rhs = parse_expression(parser);
     if (rhs == NULL) {
         free_ast(lhs);
         return NULL;
     }
     
-    return create_assign_node(lhs, rhs);
+    return create_assign_node(lhs, rhs, current_token(parser)->line, current_token(parser)->column);
 }
 
-ASTNode* parse_if() {
-    if(!match(TOK_IF))
+ASTNode* parse_if(Parser* parser) {
+    if(!match(parser, TOK_IF))
         return NULL;
 
-    if(!match(TOK_LPAREN))
+    if(!match(parser, TOK_LPAREN))
         return NULL;
 
-    ASTNode* condition = parse_expression();
+    ASTNode* condition = parse_expression(parser);
     if(condition == NULL)
         return NULL;
 
-    if(!match(TOK_RPAREN)) {
+    if(!match(parser, TOK_RPAREN)) {
         free_ast(condition);
         return NULL;
     }
     
-    ASTNode* then_branch = parse_block();
+    ASTNode* then_branch = parse_block(parser);
     if(then_branch == NULL) {
         free_ast(condition);
         return NULL;
     }
     
-    if (!check(TOK_ELSE))
-        return create_if_node(condition, then_branch, NULL);
+    if (!check(parser, TOK_ELSE))
+        return create_if_node(condition, then_branch, NULL, current_token(parser)->line, current_token(parser)->column);
 
-    advance();
+    advance(parser);
 
-    ASTNode* else_branch = parse_block();
+    ASTNode* else_branch = parse_block(parser);
     if (else_branch == NULL) {
         free_ast(condition);
         free_ast(then_branch);
         return NULL;
     }
     
-    return create_if_node(condition, then_branch, else_branch);
+    return create_if_node(condition, then_branch, else_branch, current_token(parser)->line, current_token(parser)->column);
 }
 
-ASTNode* parse_else() {
-    if(!match(TOK_ELSE))
+ASTNode* parse_else(Parser* parser) {
+    if(!match(parser, TOK_ELSE))
         return NULL;
 
-    ASTNode* node_else = parse_block();
+    ASTNode* node_else = parse_block(parser);
     if(node_else == NULL)
         return NULL;
 
@@ -966,105 +992,105 @@ int is_compound_token(TokenType type) {
     return 0;
 }
 
-ASTNode* parse_variable_declaration() {
-    TypeInfo type = parse_type();
-    if (current_token()->type != TOK_IDENTIFIER) {
+ASTNode* parse_variable_declaration(Parser* parser) {
+    TypeInfo type = parse_type(parser);
+    if (current_token(parser)->type != TOK_IDENTIFIER) {
         printf("Parse error: expected variable name\n");
         return NULL;
     }
     
-    char* name = sv_to_owned_cstr(current_token()->lexeme);
+    char* name = sv_to_owned_cstr(current_token(parser)->lexeme);
     if (name == NULL)
         return NULL;
 
-    advance();
+    advance(parser);
 
     ASTNode* expr = NULL;
-    if (match(TOK_ASSIGNMENT))
+    if (match(parser, TOK_ASSIGNMENT))
     {
-        expr = parse_expression();
+        expr = parse_expression(parser);
         if(expr == NULL) {
             free(name);
             return NULL;
         }
     }
     
-    if (!match(TOK_SEMICOLON)) {
+    if (!match(parser, TOK_SEMICOLON)) {
         printf("Parse error: expected ';'\n");
         free(name);
         free_ast(expr);
         return NULL;
     }
 
-    return create_var_decl_node(name, type, expr);
+    return create_var_decl_node(name, type, expr, current_token(parser)->line, current_token(parser)->column);
 }
 
-ASTNode* parse_struct_member() {
-    TypeInfo type = parse_type();
+ASTNode* parse_struct_member(Parser* parser) {
+    TypeInfo type = parse_type(parser);
     
-    if (!check(TOK_IDENTIFIER))
+    if (!check(parser, TOK_IDENTIFIER))
         return NULL;
     
-    char* name = sv_to_owned_cstr(current_token()->lexeme);
-    advance();
+    char* name = sv_to_owned_cstr(current_token(parser)->lexeme);
+    advance(parser);
     
-    if (!match(TOK_SEMICOLON)) {
+    if (!match(parser, TOK_SEMICOLON)) {
         free(name);
         return NULL;
     }
     
-    return create_var_decl_node(name, type, NULL);
+    return create_var_decl_node(name, type, NULL, current_token(parser)->line, current_token(parser)->column);
 }
 
-char* parse_struct_name() {
-    if (!match(TOK_STRUCT))
+char* parse_struct_name(Parser* parser) {
+    if (!match(parser, TOK_STRUCT))
         return NULL;
     
-    if (!check(TOK_IDENTIFIER))
+    if (!check(parser, TOK_IDENTIFIER))
         return NULL;
     
-    char* name = sv_to_owned_cstr(current_token()->lexeme);
-    advance();
+    char* name = sv_to_owned_cstr(current_token(parser)->lexeme);
+    advance(parser);
 
     return name;
 }
 
-ASTNode* parse_struct_declaration() {
-    if (!check(TOK_STRUCT))
+ASTNode* parse_struct_declaration(Parser* parser) {
+    if (!check(parser, TOK_STRUCT))
         return NULL;
     
-    char* name = parse_struct_name();
+    char* name = parse_struct_name(parser);
 
-    if (!match(TOK_LBRACE)) {
+    if (!match(parser, TOK_LBRACE)) {
         free(name);
         return NULL;
     }
     
-    ASTNode* struct_decl = create_struct_decl_node(name);
+    ASTNode* struct_decl = create_struct_decl_node(name, current_token(parser)->line, current_token(parser)->column);
     if (struct_decl == NULL) {
         free(name);
         return NULL;
     }
     
-    while (!check(TOK_RBRACE) && !check(TOK_EOF))
+    while (!check(parser, TOK_RBRACE) && !check(parser, TOK_EOF))
     {
-        if (is_type(current_token()->type)) {
-            ASTNode* member = parse_struct_member();
+        if (is_type(parser, current_token(parser)->type)) {
+            ASTNode* member = parse_struct_member(parser);
             if(member == NULL)
                 continue;
 
             add_member_to_struct(struct_decl, member);
         }
         else
-            advance();
+            advance(parser);
     }
     
-    if (!match(TOK_RBRACE)) {
+    if (!match(parser, TOK_RBRACE)) {
         free_ast(struct_decl);
         return NULL;
     }
 
-    if (!match(TOK_SEMICOLON)) {
+    if (!match(parser, TOK_SEMICOLON)) {
         free_ast(struct_decl);
         return NULL;
     }
@@ -1072,49 +1098,49 @@ ASTNode* parse_struct_declaration() {
     return struct_decl;
 }
 
-ASTNode* parse_return() {
-    if (!match(TOK_RETURN)) {
+ASTNode* parse_return(Parser* parser) {
+    if (!match(parser, TOK_RETURN)) {
         printf("Parse error: expected 'return'\n");
         return NULL;
     }
 
     ASTNode* expr = NULL;
-    if (!check(TOK_SEMICOLON)) {
-        expr = parse_expression();
+    if (!check(parser, TOK_SEMICOLON)) {
+        expr = parse_expression(parser);
         if(expr == NULL) {
             return NULL;
         }
     }
 
-    if (!match(TOK_SEMICOLON)) {
+    if (!match(parser, TOK_SEMICOLON)) {
         printf("Parse error: expected ';' after return\n");
         free_ast(expr);
         return NULL;
     }
-    return create_return_node(expr);
+    return create_return_node(expr, current_token(parser)->line, current_token(parser)->column);
 }
 
-ASTNode* parse_statement() {
+ASTNode* parse_statement(Parser* parser) {
 
-    switch (current_token()->type)
+    switch (current_token(parser)->type)
     {
-        case TOK_RETURN:            return parse_return();
-        case TOK_IF:                return parse_if();
-        case TOK_FOR:               return parse_for_loop();
-        case TOK_WHILE:             return parse_while_loop();
-        case TOK_LBRACE:            return parse_block();
-        case TOK_STRUCT:            return parse_struct_declaration();
+        case TOK_RETURN:            return parse_return(parser);
+        case TOK_IF:                return parse_if(parser);
+        case TOK_FOR:               return parse_for_loop(parser);
+        case TOK_WHILE:             return parse_while_loop(parser);
+        case TOK_LBRACE:            return parse_block(parser);
+        case TOK_STRUCT:            return parse_struct_declaration(parser);
         default: break;
     }
 
-    if (is_type(current_token()->type))
-        return parse_variable_declaration();
+    if (is_type(parser, current_token(parser)->type))
+        return parse_variable_declaration(parser);
 
-    ASTNode* node = parse_expression();
+    ASTNode* node = parse_expression(parser);
     if (node == NULL)
         return NULL;
 
-    if (!match(TOK_SEMICOLON)) {
+    if (!match(parser, TOK_SEMICOLON)) {
         printf("Parse error: expected ';'\n");
         free_ast(node);
         return NULL;
@@ -1130,26 +1156,26 @@ void add_statement_to_block(ASTNode* block, ASTNode* stmt) {
     block->as.block.statements[block->as.block.statement_count++] = stmt;
 }
 
-ASTNode* parse_block()
+ASTNode* parse_block(Parser* parser)
 {
-    if (!match(TOK_LBRACE)) {
+    if (!match(parser, TOK_LBRACE)) {
         printf("Parse error: expected '{'\n");
         return NULL;
     }
 
-    ASTNode* block = create_block_node();
+    ASTNode* block = create_block_node(current_token(parser)->line, current_token(parser)->column);
     if (block == NULL)
         return NULL;
 
-    while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
-        ASTNode* stmt = parse_statement();
+    while (!check(parser, TOK_RBRACE) && !check(parser, TOK_EOF)) {
+        ASTNode* stmt = parse_statement(parser);
         if(stmt == NULL)
             continue;
 
         add_statement_to_block(block, stmt);
     }
 
-    if (!match(TOK_RBRACE)) {
+    if (!match(parser, TOK_RBRACE)) {
         printf("Parse error: expected '}'\n");
         free(block);
         return NULL;
@@ -1157,55 +1183,55 @@ ASTNode* parse_block()
     return block;
 }
 
-int is_func_declaration() {
-    if(!is_type(current_token()->type))
+int is_func_declaration(Parser* parser) {
+    if(!is_type(parser, current_token(parser)->type))
         return 0;
 
-    Token* next_token = peek_token(1);
+    Token* next_token = peek_token(parser, 1);
     if (next_token->type != TOK_IDENTIFIER)
         return 0;
 
-    Token* third_token = peek_token(2);
+    Token* third_token = peek_token(parser, 2);
     return (third_token->type == TOK_LPAREN);
 }
 
-ASTNode* parse_parameters(ASTNode* func)
+ASTNode* parse_parameters(Parser* parser, ASTNode* func)
 {
-    if (!match(TOK_LPAREN)) {
+    if (!match(parser, TOK_LPAREN)) {
         printf("Parse error: expected '('\n");
         return NULL;
     }
 
-    while (!check(TOK_RPAREN) && !check(TOK_EOF)) 
+    while (!check(parser, TOK_RPAREN) && !check(parser, TOK_EOF)) 
     {
-        if (!is_type(current_token()->type)) {
+        if (!is_type(parser, current_token(parser)->type)) {
             printf("Parse error: expected type in parameter list\n");
             return NULL;
         }
 
-        TypeInfo type = parse_type();
-        if (!check(TOK_IDENTIFIER)) {
+        TypeInfo type = parse_type(parser);
+        if (!check(parser, TOK_IDENTIFIER)) {
             printf("Parse error: expected parameter name\n");
             return NULL;
         }
 
-        char* param_name = sv_to_owned_cstr(current_token()->lexeme);
+        char* param_name = sv_to_owned_cstr(current_token(parser)->lexeme);
         if(param_name == NULL)
             return NULL;
 
-        advance();
+        advance(parser);
 
-        ASTNode* param = create_param_node(param_name, type);
+        ASTNode* param = create_param_node(param_name, type, current_token(parser)->line, current_token(parser)->column);
         if (param == NULL)
             return NULL;
 
         add_param_to_function(func, param);
 
-        if (!match(TOK_COMMA))
+        if (!match(parser, TOK_COMMA))
             break;
     }
 
-    if (!match(TOK_RPAREN)) {
+    if (!match(parser, TOK_RPAREN)) {
         printf("Parse error: expected ')'\n");
         return NULL;
     }
@@ -1213,32 +1239,32 @@ ASTNode* parse_parameters(ASTNode* func)
     return func;
 }
 
-ASTNode* parse_function()
+ASTNode* parse_function(Parser* parser)
 {
-    TypeInfo return_type = parse_type();
-    if (!check(TOK_IDENTIFIER)) {
+    TypeInfo return_type = parse_type(parser);
+    if (!check(parser, TOK_IDENTIFIER)) {
         printf("Parse error: expected function name\n");
         return NULL;
     }
 
-    char* name = sv_to_owned_cstr(current_token()->lexeme);
+    char* name = sv_to_owned_cstr(current_token(parser)->lexeme);
     if(name == NULL)
         return NULL;
 
-    advance();
+    advance(parser);
 
-    ASTNode* func = create_function_node(name, return_type);
+    ASTNode* func = create_function_node(name, return_type, current_token(parser)->line, current_token(parser)->column);
     if (func == NULL) {
         free(name);
         return NULL;
     }
     
-    if (parse_parameters(func) == NULL) {
+    if (parse_parameters(parser, func) == NULL) {
         free_ast(func);
         return NULL;
     }
     
-    ASTNode* body = parse_block();
+    ASTNode* body = parse_block(parser);
     if(body == NULL) {
         free_ast(func);
         return NULL;
@@ -1249,62 +1275,62 @@ ASTNode* parse_function()
 }
 
 /* namespace main */
-char* parse_namespace_name()
+char* parse_namespace_name(Parser* parser)
 {
-    if (!match(TOK_NAMESPACE)) {
+    if (!match(parser, TOK_NAMESPACE)) {
         printf("Parse error: expected 'namespace'\n");
         return NULL;
     }
     
-    if (!check(TOK_IDENTIFIER)) {
+    if (!check(parser, TOK_IDENTIFIER)) {
         printf("Parse error: expected namespace name\n");
         return NULL;
     }
     
-    char* namespace_name = sv_to_owned_cstr(current_token()->lexeme);
-    advance();
+    char* namespace_name = sv_to_owned_cstr(current_token(parser)->lexeme);
+    advance(parser);
 
     return namespace_name;
 }
 
-ASTNode* parse_program() {
-    if(!check(TOK_NAMESPACE))
+ASTNode* parse_program(Parser* parser) {
+    if(!check(parser, TOK_NAMESPACE))
         return NULL;
 
-    char* namespace_name = parse_namespace_name();
+    char* namespace_name = parse_namespace_name(parser);
 
-    if (!match(TOK_LBRACE)) {
+    if (!match(parser, TOK_LBRACE)) {
         printf("Parse error: expected '{'\n");
         free(namespace_name);
         return NULL;
     }
     
-    ASTNode* program = create_program_node(namespace_name);
+    ASTNode* program = create_program_node(namespace_name, current_token(parser)->line, current_token(parser)->column);
     if (program == NULL) {
         free(namespace_name);
         return NULL;
     }
 
-    while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
+    while (!check(parser, TOK_RBRACE) && !check(parser, TOK_EOF)) {
 
-        if (is_func_declaration())
+        if (is_func_declaration(parser))
         {
-            ASTNode* func = parse_function();
+            ASTNode* func = parse_function(parser);
             if(func == NULL)
                 continue;
 
             add_function_to_program(program, func);
         }
-        else if (check(TOK_STRUCT)) {
-            ASTNode* struct_node = parse_struct_declaration();
+        else if (check(parser, TOK_STRUCT)) {
+            ASTNode* struct_node = parse_struct_declaration(parser);
             if(struct_node == NULL)
                 continue;
 
             add_struct_to_program(program, struct_node);
         }
-        else if (is_type(current_token()->type))
+        else if (is_type(parser, current_token(parser)->type))
         {
-            ASTNode* var_decl = parse_variable_declaration();
+            ASTNode* var_decl = parse_variable_declaration(parser);
             if(var_decl == NULL)
                 continue;
 
@@ -1313,38 +1339,16 @@ ASTNode* parse_program() {
         else
         {
             printf("Parse error: unexpected token in namespace\n");
-            advance();
+            advance(parser);
         }
     }
 
-    if (!match(TOK_RBRACE)) {
+    if (!match(parser, TOK_RBRACE)) {
         printf("Parse error: expected '}'\n");
         return NULL;
     }
 
     return program;
-}
-
-void init_parser(Tokens* tokens) {
-    parser.tokens = tokens;
-    parser.current_token = 0;
-}
-
-Token* current_token()
-{
-    if (parser.current_token >= parser.tokens->token_count)
-        return &parser.tokens->tokens[parser.tokens->token_count - 1];
-
-    return &parser.tokens->tokens[parser.current_token];
-}
-
-Token* peek_token(int offset)
-{
-    int pos = parser.current_token + offset;
-    if (pos >= parser.tokens->token_count)
-        return &parser.tokens->tokens[parser.tokens->token_count - 1];
-
-    return &parser.tokens->tokens[pos];
 }
 
 void print_ast(ASTNode* node, int level) 

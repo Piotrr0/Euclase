@@ -74,70 +74,69 @@ typedef struct Parser {
     int current_token;
 } Parser;
 
-extern Parser parser;
-void init_parser(Tokens* tokens);
+void init_parser(Parser* parser, Tokens* tokens);
 
-void advance();
-int match(TokenType type);
-int check(TokenType type);
+void advance(Parser* parser);
+int match(Parser* parser, TokenType type);
+int check(Parser* parser, TokenType type);
 
-Token* current_token();
-Token* peek_token(int offset);
+Token* current_token(Parser* parser);
+Token* peek_token(Parser* parser, int offset);
+
+ASTNode* parse_pre_increment(Parser* parser);
+ASTNode* parse_pre_decrement(Parser* parser);
+ASTNode* parse_post_increment(Parser* parser, ASTNode* operand);
+ASTNode* parse_post_decrement(Parser* parser, ASTNode* operand);
+
+ASTNode* parse_compound_operators(Parser* parser);
+ASTNode* parse_expression(Parser* parser);
+ASTNode* parse_equality(Parser* parser);
+ASTNode* parse_additive(Parser* parser);
+ASTNode* parse_multiplicative(Parser* parser);
+ASTNode* parse_unary(Parser* parser);
+ASTNode* parse_postfix(Parser* parser);
+ASTNode* parse_primary(Parser* parser);
+ASTNode* parse_parens(Parser* parser);
+ASTNode* parse_primary_expression(Parser* parser);
+ASTNode* parse_number_literal(Parser* parser);
+ASTNode* parse_string_literal(Parser* parser);
+ASTNode* parse_char_literal(Parser* parser);
+ASTNode* parse_identifier_expression(Parser* parsern);
+ASTNode* parse_dereference(Parser* parser);
+ASTNode* parse_address_of(Parser* parser);
+ASTNode* parse_function_call(Parser* parser);
+ASTNode* parse_casting(Parser* parser);
+TypeInfo parse_type(Parser* parser);
+ASTNode* parse_while_loop(Parser* parser);
+ASTNode* parse_for_loop(Parser* parser);
+ASTNode* parse_loop_init(Parser* parser);
+ASTNode* parse_loop_condition(Parser* parser);
+ASTNode* parse_loop_update(Parser* parser);
+ASTNode* parse_if(Parser* parser);
+ASTNode* parse_else(Parser* parser);
+ASTNode* parse_assignment(Parser* parser);
+ASTNode* parse_variable_declaration(Parser* parser);
+char* parse_struct_name(Parser* parser);
+ASTNode* parse_struct_declaration(Parser* parser);
+ASTNode* parse_struct_member(Parser* parser);
+ASTNode* parse_return(Parser* parser);
+ASTNode* parse_statement(Parser* parser);
+ASTNode* parse_block(Parser* parser);
+int check_pointer_level(Parser* parser, int offset);
+ASTNode* parse_parameters(Parser* parser, ASTNode* func);
+ASTNode* parse_function(Parser* parser);
+char* parse_namespace_name(Parser* parser);
+ASTNode* parse_program(Parser* parser);
+
+int is_func_call(Parser* parser);
+int is_casting(Parser* parser);
+int is_func_declaration(Parser* parser);
+int parse_pointer_level(Parser* parser);
+int is_type(Parser* parser, TokenType t);
+int is_compound_token(TokenType type);
+
 
 void free_ast(ASTNode* node);
-
-ASTNode* parse_pre_increment();
-ASTNode* parse_pre_decrement();
-ASTNode* parse_post_increment(ASTNode* operand);
-ASTNode* parse_post_decrement(ASTNode* operand);
-
-ASTNode* parse_compound_operators();
-ASTNode* parse_expression();
-ASTNode* parse_equality();
-ASTNode* parse_additive();
-ASTNode* parse_multiplicative();
-ASTNode* parse_unary();
-ASTNode* parse_postfix();
-ASTNode* parse_primary();
-ASTNode* parse_parens();
-ASTNode* parse_primary_expression();
-ASTNode* parse_number_literal();
-ASTNode* parse_string_literal();
-ASTNode* parse_char_literal();
-ASTNode* parse_identifier_expression();
-ASTNode* parse_dereference();
-ASTNode* parse_address_of();
-ASTNode* parse_function_call();
-ASTNode* parse_casting();
-TypeInfo parse_type();
-ASTNode* parse_while_loop();
-ASTNode* parse_for_loop();
-ASTNode* parse_loop_init();
-ASTNode* parse_loop_condition();
-ASTNode* parse_loop_update();
-ASTNode* parse_if();
-ASTNode* parse_else();
-ASTNode* parse_assignment();
-ASTNode* parse_variable_declaration();
-char* parse_struct_name();
-ASTNode* parse_struct_declaration();
-ASTNode* parse_struct_member();
-ASTNode* parse_return();
-ASTNode* parse_statement();
-ASTNode* parse_block();
-int check_pointer_level(int offset);
-ASTNode* parse_parameters(ASTNode* func);
-ASTNode* parse_function();
-char* parse_namespace_name();
-ASTNode* parse_program();
-
-int is_func_call();
-int is_casting();
-int is_func_declaration();
-int is_compound_token(TokenType type);
-int parse_pointer_level();
-int is_type(TokenType t);
-
 void print_ast(ASTNode* node, int indent);
 
 #endif

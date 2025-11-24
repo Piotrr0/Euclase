@@ -3,14 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-ASTNode* create_program_node(char* name) {
+ASTNode* create_program_node(char* name, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_PROGRAM;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.program = (ProgramNode) {
         .name = name,
         .functions = NULL,
@@ -24,14 +24,14 @@ ASTNode* create_program_node(char* name) {
     return node;
 }
 
-ASTNode* create_function_node(char* name, TypeInfo return_type) {
+ASTNode* create_function_node(char* name, TypeInfo return_type, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_FUNCTION;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.function = (FunctionNode) {
         .name = name,
         .return_type = return_type,
@@ -43,14 +43,14 @@ ASTNode* create_function_node(char* name, TypeInfo return_type) {
     return node;
 }
 
-ASTNode* create_block_node() {
+ASTNode* create_block_node(int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_BLOCK;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.block = (BlockNode) {
         .statements = NULL,
         .statement_count = 0
@@ -59,14 +59,14 @@ ASTNode* create_block_node() {
     return node;
 }
 
-ASTNode* create_param_node(char* name, TypeInfo type) {
+ASTNode* create_param_node(char* name, TypeInfo type, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_PARAM_LIST;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.param = (ParamNode) {
         .name = name,
         .type = type
@@ -75,14 +75,14 @@ ASTNode* create_param_node(char* name, TypeInfo type) {
     return node;
 }
 
-ASTNode* create_return_node(ASTNode* value) {
+ASTNode* create_return_node(ASTNode* value, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_RETURN;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.return_stmt = (ReturnNode) {
         .value = value
     };
@@ -90,14 +90,14 @@ ASTNode* create_return_node(ASTNode* value) {
     return node;
 }
 
-ASTNode* create_var_decl_node(char* name, TypeInfo type, ASTNode* initializer) {
+ASTNode* create_var_decl_node(char* name, TypeInfo type, ASTNode* initializer, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_VAR_DECL;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.var_decl = (VarDeclNode) {
         .name = name,
         .type = type,
@@ -107,14 +107,14 @@ ASTNode* create_var_decl_node(char* name, TypeInfo type, ASTNode* initializer) {
     return node;
 }
 
-ASTNode* create_assign_node(ASTNode* target, ASTNode* value) {
+ASTNode* create_assign_node(ASTNode* target, ASTNode* value, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_ASSIGN;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.assign = (AssignNode) {
         .target = target,
         .value = value
@@ -123,14 +123,14 @@ ASTNode* create_assign_node(ASTNode* target, ASTNode* value) {
     return node;
 }
 
-ASTNode* create_if_node(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch) {
+ASTNode* create_if_node(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_IF;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.if_stmt = (IfNode) {
         .condition = condition,
         .then_branch = then_branch,
@@ -140,14 +140,14 @@ ASTNode* create_if_node(ASTNode* condition, ASTNode* then_branch, ASTNode* else_
     return node;
 }
 
-ASTNode* create_for_node(ASTNode* init, ASTNode* condition, ASTNode* increment, ASTNode* body) {
+ASTNode* create_for_node(ASTNode* init, ASTNode* condition, ASTNode* increment, ASTNode* body, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_FOR;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.for_stmt = (ForNode) {
         .init = init,
         .condition = condition,
@@ -158,14 +158,14 @@ ASTNode* create_for_node(ASTNode* init, ASTNode* condition, ASTNode* increment, 
     return node;
 }
 
-ASTNode* create_while_node(ASTNode* condition, ASTNode* body) {
+ASTNode* create_while_node(ASTNode* condition, ASTNode* body, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_WHILE;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.while_stmt = (WhileNode) {
         .condition = condition,
         .body = body
@@ -174,14 +174,14 @@ ASTNode* create_while_node(ASTNode* condition, ASTNode* body) {
     return node;
 }
 
-ASTNode* create_identifier_node(char* name) {
+ASTNode* create_identifier_node(char* name, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_IDENTIFIER;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.identifier = (IdentifierNode) {
         .name = name
     };
@@ -189,14 +189,14 @@ ASTNode* create_identifier_node(char* name) {
     return node;
 }
 
-ASTNode* create_int_literal_node(long long value) {
+ASTNode* create_int_literal_node(long long value, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_INT_LITERAL;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.int_literal = (IntLiteralNode) {
         .value = value
     };
@@ -204,14 +204,14 @@ ASTNode* create_int_literal_node(long long value) {
     return node;
 }
 
-ASTNode* create_float_literal_node(float value) {
+ASTNode* create_float_literal_node(float value, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_FLOAT_LITERAL;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.float_literal = (FloatLiteralNode) {
         .value = value
     };
@@ -219,14 +219,14 @@ ASTNode* create_float_literal_node(float value) {
     return node;
 }
 
-ASTNode* create_double_literal_node(double value) {
+ASTNode* create_double_literal_node(double value, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_DOUBLE_LITERAL;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.double_literal = (DoubleLiteralNode) {
         .value = value
     };
@@ -234,14 +234,14 @@ ASTNode* create_double_literal_node(double value) {
     return node;
 }
 
-ASTNode* create_string_literal_node(char* value) {
+ASTNode* create_string_literal_node(char* value, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_STRING_LITERAL;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.string_literal = (StringLiteralNode) {
         .value = value,
         .length = strlen(value)
@@ -250,14 +250,14 @@ ASTNode* create_string_literal_node(char* value) {
     return node;
 }
 
-ASTNode* create_char_literal_node(char value) {
+ASTNode* create_char_literal_node(char value, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_CHAR_LITERAL;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.char_literal = (CharLiteralNode) {
         .value = value
     };
@@ -265,14 +265,14 @@ ASTNode* create_char_literal_node(char value) {
     return node;
 }
 
-ASTNode* create_func_call_node(char* name) {
+ASTNode* create_func_call_node(char* name, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_FUNC_CALL;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.func_call = (FuncCallNode) {
         .name = name,
         .args = NULL,
@@ -282,14 +282,14 @@ ASTNode* create_func_call_node(char* name) {
     return node;
 }
 
-ASTNode* create_unary_op_node(UnaryOP op, ASTNode* operand) {
+ASTNode* create_unary_op_node(UnaryOP op, ASTNode* operand, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_UNARY_OP;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.unary_op = (UnaryOpNode) {
         .op = op,
         .operand = operand
@@ -298,14 +298,14 @@ ASTNode* create_unary_op_node(UnaryOP op, ASTNode* operand) {
     return node;
 }
 
-ASTNode* create_binary_op_node(BinaryOp op, ASTNode* left, ASTNode* right) {
+ASTNode* create_binary_op_node(BinaryOp op, ASTNode* left, ASTNode* right, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_BINARY_OP;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.binary_op = (BinaryOpNode) {
         .op = op,
         .left = left,
@@ -315,14 +315,14 @@ ASTNode* create_binary_op_node(BinaryOp op, ASTNode* left, ASTNode* right) {
     return node;
 }
 
-ASTNode* create_cast_node(TypeInfo target_type, ASTNode* expr) {
+ASTNode* create_cast_node(TypeInfo target_type, ASTNode* expr, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_CAST;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.cast = (CastNode) {
         .target_type = target_type,
         .expr = expr
@@ -331,14 +331,14 @@ ASTNode* create_cast_node(TypeInfo target_type, ASTNode* expr) {
     return node;
 }
 
-ASTNode* create_member_access_node(ASTNode* object, char* member) {
+ASTNode* create_member_access_node(ASTNode* object, char* member, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_MEMBER_ACCESS;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.member_access = (MemberAccessNode) {
         .object = object,
         .member = member
@@ -347,14 +347,14 @@ ASTNode* create_member_access_node(ASTNode* object, char* member) {
     return node;
 }
 
-ASTNode* create_struct_decl_node(char* type) {
+ASTNode* create_struct_decl_node(char* type, int line, int column) {
     ASTNode* node = malloc(sizeof(ASTNode));
     if (node == NULL)
         return NULL;
 
     node->type = AST_STRUCT_DECL;
-    node->line = current_token()->line;
-    node->column = current_token()->column;
+    node->line = line;
+    node->column = column;
     node->as.struct_decl = (StructDeclNode) {
         .type = type,
         .members = NULL,
