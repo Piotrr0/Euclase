@@ -24,7 +24,15 @@ execute_process(
 )
 
 file(GLOB SRC "src/*.c")
-add_executable(${PROJECT_NAME} ${SRC})
+list(REMOVE_ITEM SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
+list(REMOVE_ITEM SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/tests.c")
+
+add_executable(${PROJECT_NAME} src/main.c ${SRC})
+add_executable(EuclaseTests src/tests.c ${SRC})
+
 
 target_compile_options(${PROJECT_NAME} PRIVATE ${LLVM_CFLAGS})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LLVM_LIBS} ${LLVM_SYSTEM_LIBS})
+
+target_compile_options(EuclaseTests PRIVATE ${LLVM_CFLAGS})
+target_link_libraries(EuclaseTests PRIVATE ${LLVM_LIBS} ${LLVM_SYSTEM_LIBS})
