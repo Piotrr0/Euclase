@@ -122,10 +122,84 @@ void visit_block_stmt(CodegenVisitor* visitor, ASTNode* node)
     pop_scope(visitor->ctx->symbol_table);
 }
 
+void assign_to_identifier(CodegenVisitor* visitor, ASTNode* lhs, LLVMValueRef new_val)
+{
+    const char* lhs_name = lhs->as.identifier.name;
+    SymbolEntry* entry = lookup_symbol(visitor->ctx->symbol_table, lhs_name);
+
+    if (entry == NULL) {
+        printf("Codegen: Undefined variable '%s'\n", lhs_name);
+        return;
+    }
+
+    if (entry->symbol_data.kind != SYMBOL_VARIABLE) {
+        printf("Codegen: '%s' is not a variable\n", lhs_name);
+        return;
+    }
+
+    LLVMBuildStore(visitor->ctx->builder, new_val, entry->symbol_data.as.variable.alloc);
+}
+
+void assign_to_dereference(CodegenVisitor* visitor, ASTNode* lhs, LLVMValueRef new_val)
+{
+    UnaryOpNode unary_node = lhs->as.unary_op;
+    LLVMValueRef ptr = visit_expression(visitor, unary_node.operand);
+    if (ptr == NULL)
+        return;
+
+    LLVMBuildStore(visitor->ctx->builder, new_val, ptr);
+}
+
+void assign_to_member_access(CodegenVisitor* visitor, ASTNode* lhs, LLVMValueRef new_val)
+{
+    MemberAccessNode access_node = lhs->as.member_access;
+    if (access_node.object == NULL)
+        return;
+    
+    const char* member_name = access_node.member;
+    if (member_name == NULL && access_node.object->type != AST_IDENTIFIER) {
+        return;
+    }
+
+    const char* var_name = access_node.object->as.identifier.name;
+    SymbolEntry* var_entry = lookup_symbol(visitor->ctx->symbol_table, var_name);
+    TypeInfo var_type = var_entry->symbol_data.as.variable.type;
+    if (var_entry == NULL || var_entry->symbol_data.kind != SYMBOL_VARIABLE) {
+        return;
+    }
+
+    const char* struct_type_name = var_type.type;
+    LLVMValueRef struct_ptr = var_entry->symbol_data.as.variable.alloc;
+    if (struct_ptr == NULL)
+        return;
+
+    LLVMTypeRef struct_type = lookup_struct_type(visitor->ctx->symbol_table, struct_type_name);
+    if (struct_type == NULL)
+        return;
+
+    int member_index = get_struct_member_index(visitor->ctx->symbol_table, struct_type_name, member_name);
+    if (member_index < 0)
+        return;
+
+    LLVMValueRef indices[2];
+    indices[0] = LLVMConstInt(LLVMInt32TypeInContext(visitor->ctx->context), 0, 0);
+    indices[1] = LLVMConstInt(LLVMInt32TypeInContext(visitor->ctx->context), member_index, 0);
+
+    LLVMValueRef member_ptr = LLVMBuildGEP2(
+        visitor->ctx->builder,
+        struct_type,
+        struct_ptr,
+        indices,
+        2,
+        "member_ptr"
+    );
+
+    LLVMBuildStore(visitor->ctx->builder, new_val, member_ptr);
+}
+
 void visit_assign_stmt(CodegenVisitor* visitor, ASTNode* node)
 {
     AssignNode assign_node = node->as.assign;
-
     ASTNode* lhs = assign_node.target;
     ASTNode* rhs = assign_node.value;
 
@@ -135,28 +209,15 @@ void visit_assign_stmt(CodegenVisitor* visitor, ASTNode* node)
     LLVMValueRef new_val = visit_expression(visitor, rhs);
     if (new_val == NULL)
         return;
-    
-    if (lhs->type == AST_IDENTIFIER) {
-        const char* lhs_name = lhs->as.identifier.name;
-        SymbolEntry* entry = lookup_symbol(visitor->ctx->symbol_table, lhs_name);
-        if (entry == NULL) {
-            printf("Codegen: Undefined variable '%s'\n", lhs_name);
-            return;
-        }
 
-        if (entry->symbol_data.kind != SYMBOL_VARIABLE) {
-            printf("Codegen: '%s' is not a variable\n", lhs_name);
-            return;
-        }
+    switch (lhs->type) {
+        case AST_IDENTIFIER:    assign_to_identifier(visitor, lhs, new_val); break;
+        case AST_UNARY_OP:
+            if (lhs->as.unary_op.op == OP_DEREF)
+                assign_to_dereference(visitor, lhs, new_val);
+            break;
 
-        LLVMBuildStore(visitor->ctx->builder, new_val, entry->symbol_data.as.variable.alloc);
-    }
-    else if (lhs->type == AST_UNARY_OP && lhs->as.unary_op.op == OP_DEREF) {
-        UnaryOpNode unary_node = lhs->as.unary_op;
-        LLVMValueRef ptr = visit_expression(visitor, unary_node.operand);
-        if (ptr == NULL) 
-            return;
-
-        LLVMBuildStore(visitor->ctx->builder, new_val, ptr);
+        case AST_MEMBER_ACCESS: assign_to_member_access(visitor, lhs, new_val); break;
+        default: break;
     }
 }

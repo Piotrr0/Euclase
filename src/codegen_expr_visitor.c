@@ -1,4 +1,7 @@
 #include "codegen_expr_visitor.h"
+#include "ast_layout.h"
+#include "lookup_table.h"
+#include <llvm-c/Types.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -160,5 +163,45 @@ LLVMValueRef visit_cast_expr(CodegenVisitor* visitor, ASTNode* node) {
 }
 
 LLVMValueRef visit_member_access_expr(CodegenVisitor* visitor, ASTNode* node) {
-    return NULL;
+    MemberAccessNode access_node = node->as.member_access;
+    if (access_node.object == NULL)
+        return NULL;
+
+    const char* member_name = access_node.member;
+    if (member_name == NULL && access_node.object->type != AST_IDENTIFIER)
+        return NULL;
+
+    const char* var_name = access_node.object->as.identifier.name;
+    SymbolEntry* var_entry = lookup_symbol(visitor->ctx->symbol_table, var_name);    
+    TypeInfo var_type  = var_entry->symbol_data.as.variable.type;
+    if (var_entry == NULL || var_entry->symbol_data.kind != SYMBOL_VARIABLE) {
+        return NULL;
+    }
+
+    const char* struct_type_name = var_type.type;
+    LLVMValueRef struct_ptr = var_entry->symbol_data.as.variable.alloc;
+
+    LLVMTypeRef struct_type = lookup_struct_type(visitor->ctx->symbol_table, struct_type_name);
+    if (struct_type == NULL)
+        return NULL;
+
+    int member_index = get_struct_member_index(visitor->ctx->symbol_table, struct_type_name, member_name);
+    if (member_index < 0)
+        return NULL;
+
+    LLVMValueRef indices[2];
+    indices[0] = LLVMConstInt(LLVMInt32TypeInContext(visitor->ctx->context), 0, 0);
+    indices[1] = LLVMConstInt(LLVMInt32TypeInContext(visitor->ctx->context), member_index, 0);
+
+    LLVMValueRef member_ptr = LLVMBuildGEP2(
+        visitor->ctx->builder,
+        struct_type,
+        struct_ptr,
+        indices,
+        2,
+        "member_ptr"
+    );
+
+    LLVMTypeRef member_type = LLVMStructGetTypeAtIndex(struct_type, member_index);
+    return LLVMBuildLoad2(visitor->ctx->builder, member_type, member_ptr, "member_value");
 }

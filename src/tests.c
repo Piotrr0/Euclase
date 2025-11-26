@@ -319,7 +319,7 @@ void init_tests() {
     tests[17] =(TestCase){"struct", test_struct, 40};
     tests[18] =(TestCase){"string_literal", test_string_literal, 5};
     tests[19] =(TestCase){"inc_dec", test_inc_dec, 5};
-    /* tests[20] =(TestCase){"access_member", test_access_member, 10}; */
+    tests[20] =(TestCase){"access_member", test_access_member, 10};
 }
 
 int run_test(const char* test) 
@@ -372,4 +372,11 @@ void run_tests() {
         else
             printf("Test: %d (%s), %sFailed%s with result: %d (expected %d)\n", i, tests[i].name, KRED, RESET, result, tests[i].expected);
     }
+}
+
+int main()
+{
+#ifdef __unix__
+    run_tests();
+#endif
 }
