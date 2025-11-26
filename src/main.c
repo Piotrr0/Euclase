@@ -1,6 +1,6 @@
+#include "codegen_visitor.h"
 #include "lexer.h"
 #include "parser.h"
-#include "codegen.h"
 #include "tests.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -141,10 +141,12 @@ void compile_source_file(int argc, char** argv)
     Lexer lexer;
     Tokens* tokens = tokenize(&lexer, code, 1);
     cleanup_lexer(&lexer);
-    init_parser(tokens);
-    ASTNode* program = parse_program();
 
-    generate_llvm_ir(program, module_name, output_filename);
+    Parser parser;
+    init_parser(&parser, tokens);
+    ASTNode* program = parse_program(&parser);
+
+    generate_llvm_ir_visitor(program, module_name, output_filename);
     
     free(output_filename);
     free(module_name);

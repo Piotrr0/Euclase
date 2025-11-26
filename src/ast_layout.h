@@ -1,7 +1,7 @@
 #ifndef AST_LAYOUT_H
 #define AST_LAYOUT_H
 
-#include "lexer.h"
+#include "token.h"
 
 typedef struct ASTNode ASTNode;
 
@@ -27,8 +27,6 @@ typedef enum {
     OP_PRE_DEC,
     OP_POST_INC,
     OP_POST_DEC,
-
-
 } UnaryOP;
 
 typedef struct TypeInfo {
@@ -163,5 +161,36 @@ typedef struct {
     ASTNode** members;
     int member_count;
 } StructDeclNode;
+
+ASTNode* create_program_node(char* name, int line, int column);
+ASTNode* create_function_node(char* name, TypeInfo return_type, int line, int column);
+ASTNode* create_block_node(int line, int column);
+ASTNode* create_param_node(char* name, TypeInfo type, int line, int column);
+ASTNode* create_return_node(ASTNode* value, int line, int column);
+ASTNode* create_var_decl_node(char* name, TypeInfo type, ASTNode* initializer, int line, int column);
+ASTNode* create_assign_node(ASTNode* target, ASTNode* value, int line, int column);
+ASTNode* create_if_node(ASTNode* condition, ASTNode* then_branch, ASTNode* else_branch, int line, int column);
+ASTNode* create_for_node(ASTNode* init, ASTNode* condition, ASTNode* increment, ASTNode* body, int line, int column);
+ASTNode* create_while_node(ASTNode* condition, ASTNode* body, int line, int column);
+ASTNode* create_identifier_node(char* name, int line, int column);
+ASTNode* create_int_literal_node(long long value, int line, int column);
+ASTNode* create_float_literal_node(float value, int line, int column);
+ASTNode* create_double_literal_node(double value, int line, int column);
+ASTNode* create_string_literal_node(char* value, int line, int column);
+ASTNode* create_char_literal_node(char value, int line, int column);
+ASTNode* create_func_call_node(char* name, int line, int column);
+ASTNode* create_unary_op_node(UnaryOP op, ASTNode* operand, int line, int column);
+ASTNode* create_binary_op_node(BinaryOp op, ASTNode* left, ASTNode* right, int line, int column);
+ASTNode* create_cast_node(TypeInfo target_type, ASTNode* expr, int line, int column);
+ASTNode* create_member_access_node(ASTNode* object, char* member, int line, int column);
+ASTNode* create_struct_decl_node(char* type, int line, int column);
+
+void add_param_to_function(ASTNode* func, ASTNode* param);
+void add_member_to_struct(ASTNode* struct_decl, ASTNode* member);
+void add_arg_to_func_call(ASTNode* func_call, ASTNode* arg);
+void add_statement_to_block(ASTNode* block, ASTNode* stmt);
+void add_function_to_program(ASTNode* program, ASTNode* function);
+void add_struct_to_program(ASTNode* program, ASTNode* struct_decl);
+void add_global_to_program(ASTNode* program, ASTNode* global);
 
 #endif
