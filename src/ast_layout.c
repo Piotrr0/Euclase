@@ -364,6 +364,21 @@ ASTNode* create_struct_decl_node(char* type, int line, int column) {
     return node;
 }
 
+ASTNode* create_print_node(ASTNode* expr, int line, int column) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node == NULL)
+        return NULL;
+
+    node->type = AST_PRINT;
+    node->line = line;
+    node->column = column;
+    node->as.print = (PrintNode) {
+        .expression = expr
+    };
+
+    return node;
+}
+
 void add_param_to_function(ASTNode* func, ASTNode* param) {
     if (func == NULL || param == NULL)
         return;

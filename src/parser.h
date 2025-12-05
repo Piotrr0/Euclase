@@ -32,7 +32,8 @@ typedef enum {
     AST_UNARY_OP,
     
     AST_STRUCT_DECL,
-    AST_MEMBER_ACCESS
+    AST_MEMBER_ACCESS,
+    AST_PRINT
 } ASTNodeType;
 
 struct ASTNode {
@@ -60,6 +61,7 @@ struct ASTNode {
         CastNode cast;
         MemberAccessNode member_access;
         IdentifierNode identifier;
+        PrintNode print;
 
         IntLiteralNode int_literal;
         FloatLiteralNode float_literal;
@@ -82,6 +84,9 @@ int check(Parser* parser, TokenType type);
 
 Token* current_token(Parser* parser);
 Token* peek_token(Parser* parser, int offset);
+
+
+ASTNode* prase_print(Parser* parser);
 
 ASTNode* parse_pre_increment(Parser* parser);
 ASTNode* parse_pre_decrement(Parser* parser);

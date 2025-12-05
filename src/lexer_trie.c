@@ -1,4 +1,5 @@
 #include "lexer_trie.h"
+#include "token.h"
 #include <stdlib.h>
 
 TrieNode* create_trie_node() {
@@ -44,7 +45,7 @@ TrieNode* build_operator_trie(TrieNode* root) {
     trie_insert(root, ",", TOK_COMMA);
     trie_insert(root, ".", TOK_DOT);
     trie_insert(root, ";", TOK_SEMICOLON);
-    
+
     trie_insert(root, "==", TOK_EQUAL);
     trie_insert(root, "!=", TOK_NOT_EQUAL);
     trie_insert(root, "<=", TOK_LESS_EQUALS);
@@ -67,7 +68,7 @@ TrieNode* build_keyword_trie(TrieNode* root)
     trie_insert(root, "for", TOK_FOR);
     trie_insert(root, "while", TOK_WHILE);
     trie_insert(root, "return", TOK_RETURN);
-    
+
     trie_insert(root, "void", TOK_VOID);
     trie_insert(root, "int", TOK_INT);
     trie_insert(root, "uint", TOK_UINT);
@@ -78,9 +79,11 @@ TrieNode* build_keyword_trie(TrieNode* root)
     trie_insert(root, "char", TOK_CHAR);
     trie_insert(root, "uchar", TOK_UCHAR);
     
+    trie_insert(root, "print", TOK_PRINT);
+
     trie_insert(root, "struct", TOK_STRUCT);
     trie_insert(root, "namespace", TOK_NAMESPACE);
-    
+
     return root;
 }
 

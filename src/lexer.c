@@ -416,6 +416,7 @@ const char* token_type_name(TokenType type) {
         case TOK_FOR:           return "FOR";
         case TOK_WHILE:         return "WHILE";
         case TOK_STRUCT:        return "STRUCT";
+        case TOK_PRINT:         return "PRINT";
 
         case TOK_IDENTIFIER:    return "IDENTIFIER";
         case TOK_NUMBER_INT:    return "NUMBER_INT";
