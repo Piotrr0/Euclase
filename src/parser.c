@@ -182,6 +182,32 @@ int parse_pointer_level(Parser* parser) {
     return level;
 }
 
+ASTNode* parse_print(Parser* parser) {
+    if (!match(parser, TOK_PRINT))
+        return NULL;
+
+    if (!match(parser, TOK_LPAREN)) {
+        return NULL;
+    }
+
+    ASTNode* expr = parse_expression(parser);
+    if (expr == NULL) {
+        return NULL;
+    }
+
+    if (!match(parser, TOK_RPAREN)) {
+        free_ast(expr);
+        return NULL;
+    }
+
+    if (!match(parser, TOK_SEMICOLON)) {
+        free_ast(expr);
+        return NULL;
+    }
+
+    return create_print_node(expr, current_token(parser)->line, current_token(parser)->column);
+}
+
 ASTNode* parse_compound_operators(Parser* parser) {
     ASTNode* lhs = parse_expression(parser);
     if (lhs == NULL)
@@ -1129,6 +1155,7 @@ ASTNode* parse_statement(Parser* parser) {
         case TOK_FOR:               return parse_for_loop(parser);
         case TOK_WHILE:             return parse_while_loop(parser);
         case TOK_LBRACE:            return parse_block(parser);
+        case TOK_PRINT:             return parse_print(parser);
         case TOK_STRUCT:            return parse_struct_declaration(parser);
         default: break;
     }
@@ -1511,7 +1538,12 @@ void print_ast(ASTNode* node, int level)
                 print_ast(node->as.for_stmt.body, level + 2);
             }
             break;
-            
+        case AST_PRINT:
+            printf("PrintStatement\n");
+            if (node->as.print.expression) {
+                print_ast(node->as.print.expression, level + 1);
+            }
+            break;
         case AST_WHILE:
             printf("While\n");
             if (node->as.while_stmt.condition) {

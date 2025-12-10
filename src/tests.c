@@ -296,6 +296,14 @@ const char* test_access_member =
     "   }"
     "}";
 
+const char* test_print =
+    "namespace main {"
+    "   int main() {"
+    "       print(\"Hello World\");"
+    "       return 1;"
+    "   }"
+    "}";
+    
 TestCase tests[TESTS_BUFFER];
 
 void init_tests() {
@@ -320,6 +328,7 @@ void init_tests() {
     tests[18] =(TestCase){"string_literal", test_string_literal, 5};
     tests[19] =(TestCase){"inc_dec", test_inc_dec, 5};
     tests[20] =(TestCase){"access_member", test_access_member, 10};
+    tests[21] =(TestCase){"print", test_print, 1};
 }
 
 int run_test(const char* test) 

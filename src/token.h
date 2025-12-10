@@ -63,7 +63,9 @@ typedef enum {
 
     TOK_EOF,
     TOK_NONE,
-    TOK_ERROR
+    TOK_ERROR,
+
+    TOK_PRINT
 
 } TokenType;
 
