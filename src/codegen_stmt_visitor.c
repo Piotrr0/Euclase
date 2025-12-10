@@ -1,5 +1,6 @@
 #include "codegen_stmt_visitor.h"
 #include <stdio.h>
+#include <string.h>
 
 void visit_return_stmt(CodegenVisitor* visitor, ASTNode* node)
 {
@@ -220,4 +221,45 @@ void visit_assign_stmt(CodegenVisitor* visitor, ASTNode* node)
         case AST_MEMBER_ACCESS: assign_to_member_access(visitor, lhs, new_val); break;
         default: break;
     }
+}
+
+void visit_print_stmt(CodegenVisitor* visitor, ASTNode* node) {
+    LLVMValueRef value_to_print = visit_expression(visitor, node->as.print.expression);
+    if (value_to_print == NULL)
+        return;
+    
+    LLVMTypeRef type = LLVMTypeOf(value_to_print);
+    LLVMTypeKind type_kind = LLVMGetTypeKind(type);
+    
+    const char* format = "%d\n";
+    if (type_kind == LLVMIntegerTypeKind) {
+        format = "%d\n";
+    }
+    else if (type_kind == LLVMPointerTypeKind) {
+        format = "%s\n";
+    }
+    else if (type_kind == LLVMDoubleTypeKind) {
+        format = "%f\n";
+    }
+    else if (type_kind == LLVMFloatTypeKind) {
+        value_to_print = LLVMBuildFPExt(visitor->ctx->builder, value_to_print, LLVMDoubleTypeInContext(visitor->ctx->context), "promote_float");
+        format = "%f\n";
+    }
+
+    LLVMValueRef format_str = LLVMBuildGlobalStringPtr(visitor->ctx->builder, format, "print_fmt");
+
+    LLVMValueRef args[] = { format_str, value_to_print };
+    LLVMValueRef printf_func = get_printf_func(visitor->ctx);
+
+    LLVMTypeRef param_types[] = { LLVMPointerType(LLVMInt8TypeInContext(visitor->ctx->context), 0) };
+    LLVMTypeRef printf_type = LLVMFunctionType(LLVMInt32TypeInContext(visitor->ctx->context), param_types, 1, 1);
+
+    LLVMBuildCall2(
+        visitor->ctx->builder, 
+        LLVMGetElementType(LLVMTypeOf(printf_func)), 
+        printf_func, 
+        args, 
+        2, 
+        ""
+    );
 }

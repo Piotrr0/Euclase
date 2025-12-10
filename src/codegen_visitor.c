@@ -75,6 +75,7 @@ CodegenVisitor* create_codegen_visitor(const char* module_name) {
     visitor->visit_function = visit_function_decl;
     visitor->visit_struct_decl = visit_struct_decl_decl;
     visitor->visit_program = visit_program_decl;
+    visitor->visit_print = visit_print_stmt;
 
     return visitor;
 }
@@ -123,6 +124,7 @@ void visit_statement(CodegenVisitor* visitor, ASTNode* node) {
         case AST_FOR:       visitor->visit_for(visitor, node); break;
         case AST_WHILE:     visitor->visit_while(visitor, node); break;
         case AST_BLOCK:     visitor->visit_block(visitor, node); break;
+        case AST_PRINT:     visitor->visit_print(visitor, node); break;
         default:            visit_expression(visitor, node); break;
     }
 }
@@ -204,4 +206,17 @@ void generate_llvm_ir_visitor(ASTNode* ast, const char* module_name, const char*
     }
 
     destroy_codegen_visitor(visitor);
+}
+
+LLVMValueRef get_printf_func(CodegenContext* ctx) {
+    LLVMValueRef printf_func = LLVMGetNamedFunction(ctx->module, "printf");
+
+    if (printf_func != NULL)
+        return printf_func;
+
+    LLVMTypeRef args[] = { LLVMPointerType(LLVMInt8TypeInContext(ctx->context), 0) };    
+    LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32TypeInContext(ctx->context), args, 1, 1);
+    
+    printf_func = LLVMAddFunction(ctx->module, "printf", func_type);
+    return printf_func;
 }
