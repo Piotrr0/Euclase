@@ -1078,20 +1078,7 @@ ASTNode* parse_variable_declaration(Parser* parser) {
 }
 
 ASTNode* parse_struct_member(Parser* parser) {
-    TypeInfo type = parse_type(parser);
-    
-    if (!check(parser, TOK_IDENTIFIER))
-        return NULL;
-    
-    char* name = sv_to_owned_cstr(current_token(parser)->lexeme);
-    advance(parser);
-    
-    if (!match(parser, TOK_SEMICOLON)) {
-        free(name);
-        return NULL;
-    }
-    
-    return create_var_decl_node(name, type, NULL, current_token(parser)->line, current_token(parser)->column);
+    return parse_variable_declaration(parser);
 }
 
 char* parse_struct_name(Parser* parser) {
