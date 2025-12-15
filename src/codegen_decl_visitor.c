@@ -38,6 +38,9 @@ void visit_global_var_decl(CodegenVisitor* visitor, ASTNode* node)
         if (init_val != NULL) {
             LLVMSetInitializer(global_alloca, init_val);
         }
+    } 
+    else {
+        LLVMSetInitializer(global_alloca, LLVMConstNull(var_type));
     }
 
     add_variable_symbol(visitor->ctx->symbol_table, var_decl.name, var_decl.type, global_alloca, 1);
@@ -101,7 +104,7 @@ void generate_function_body(CodegenVisitor* visitor, BlockNode body_node) {
 void visit_function_decl(CodegenVisitor* visitor, ASTNode* node) {
     FunctionNode func_node = node->as.function;
 
-    LLVMTypeRef param_types[func_node.param_count];
+    LLVMTypeRef* param_types = malloc(sizeof(LLVMTypeRef) * func_node.param_count);
     collect_function_param_types(visitor, func_node, param_types);
 
     LLVMTypeRef return_type = token_type_to_llvm_type(visitor->ctx, func_node.return_type.base_type);

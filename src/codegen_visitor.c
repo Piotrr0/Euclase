@@ -159,7 +159,6 @@ LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type) {
 LLVMTypeRef build_type_from_info(CodegenContext* ctx, TypeInfo* type_info)
 {
     LLVMTypeRef base_type;
-
     if (type_info->base_type == TOK_IDENTIFIER)
     {
         SymbolEntry* struct_entry = lookup_symbol(ctx->symbol_table, type_info->type);
@@ -174,6 +173,12 @@ LLVMTypeRef build_type_from_info(CodegenContext* ctx, TypeInfo* type_info)
 
     for (int i = 0; i < type_info->pointer_level; i++) {
         base_type = LLVMPointerType(base_type, 0);
+    }
+
+    if (type_info->is_array) {
+        for (int i = type_info->array_dim_count - 1; i >= 0; i--) {
+            base_type = LLVMArrayType(base_type, type_info->array_sizes[i]);
+        }
     }
 
     return base_type;
