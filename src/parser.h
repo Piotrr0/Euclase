@@ -33,6 +33,7 @@ typedef enum {
     
     AST_STRUCT_DECL,
     AST_MEMBER_ACCESS,
+    AST_ARRAY_ACCESS, 
     AST_PRINT
 } ASTNodeType;
 
@@ -62,6 +63,7 @@ struct ASTNode {
         MemberAccessNode member_access;
         IdentifierNode identifier;
         PrintNode print;
+        ArrayAcess array_access;
 
         IntLiteralNode int_literal;
         FloatLiteralNode float_literal;

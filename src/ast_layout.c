@@ -379,6 +379,21 @@ ASTNode* create_print_node(ASTNode* expr, int line, int column) {
     return node;
 }
 
+ASTNode* create_array_access_node(ASTNode* target, ASTNode* index, int line, int column) {
+    ASTNode* node = malloc(sizeof(ASTNode));
+    if (node != NULL) {
+        node->type = AST_ARRAY_ACCESS;
+        node->line = line;
+        node->column = column;
+        node->as.array_access = (ArrayAcess){
+            .target = target,
+            .index = index
+        };
+    }
+
+    return node;
+}
+
 void add_param_to_function(ASTNode* func, ASTNode* param) {
     if (func == NULL || param == NULL)
         return;

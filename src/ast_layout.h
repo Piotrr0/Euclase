@@ -172,6 +172,11 @@ typedef struct {
    ASTNode* expression;
 } PrintNode;
 
+typedef struct {
+    ASTNode* target;
+    ASTNode* index;
+} ArrayAcess;
+
 ASTNode* create_program_node(char* name, int line, int column);
 ASTNode* create_function_node(char* name, TypeInfo return_type, int line, int column);
 ASTNode* create_block_node(int line, int column);

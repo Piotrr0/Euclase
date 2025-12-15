@@ -109,6 +109,11 @@ void free_ast(ASTNode* node) {
             free(node->as.struct_decl.type);
             free_node_array(node->as.struct_decl.members, node->as.struct_decl.member_count);
             break;
+
+        case AST_ARRAY_ACCESS:
+            free_ast(node->as.array_access.target);
+            free_ast(node->as.array_access.index);
+            break;
             
         default:
             break;
@@ -1583,7 +1588,16 @@ void print_ast(ASTNode* node, int level)
             if (node->as.member_access.object)
                 print_ast(node->as.member_access.object, level + 1);
             break;
+        case AST_ARRAY_ACCESS:
+            printf("ArrayAccess\n");    
+            for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Target:\n");
+            print_ast(node->as.array_access.target, level + 2);
             
+            for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Index:\n");
+            print_ast(node->as.array_access.index, level + 2);
+            break;
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->as.cast.target_type.base_type));
             if (node->as.cast.target_type.pointer_level > 0) {
