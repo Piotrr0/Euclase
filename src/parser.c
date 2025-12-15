@@ -766,19 +766,17 @@ TypeInfo parse_type(Parser* parser)
         exit(1);
     }
 
-    TokenType ret_type = current_token(parser)->type;
-    char* type = sv_to_owned_cstr(current_token(parser)->lexeme);
+    TypeInfo type_info;
+    type_info.is_array = 0;
+    type_info.array_dim_count = 0;
+
+    type_info.base_type = current_token(parser)->type;
+    type_info.type = sv_to_owned_cstr(current_token(parser)->lexeme);
+
     advance(parser);
 
-    int pointer_level = parse_pointer_level(parser);
-
-    TypeInfo info = { 
-        .base_type = ret_type, 
-        .pointer_level = pointer_level, 
-        .type = type 
-    };
-
-    return info;
+    type_info.pointer_level = parse_pointer_level(parser);
+    return type_info;
 }
 
 int is_func_call(Parser* parser)
@@ -1030,6 +1028,34 @@ ASTNode* parse_variable_declaration(Parser* parser) {
         return NULL;
 
     advance(parser);
+
+    while (check(parser, TOK_LBRACKET)) {
+        advance(parser);
+        type.is_array = 1;
+
+        if (type.array_dim_count >= MAX_ARRAY_DIMS) {
+            free(name);
+            return NULL;
+        }
+
+        if (check(parser, TOK_NUMBER_INT)) {
+            char* size_str = sv_to_owned_cstr(current_token(parser)->lexeme);
+            type.array_sizes[type.array_dim_count] = atoi(size_str);
+            type.array_dim_count++;
+            
+            free(size_str);
+            advance(parser);
+        } 
+        else {
+            free(name);
+            return NULL;
+        }
+
+        if (!match(parser, TOK_RBRACKET)) {
+            free(name);
+            return NULL;
+        }
+    }
 
     ASTNode* expr = NULL;
     if (match(parser, TOK_ASSIGNMENT))
@@ -1434,12 +1460,13 @@ void print_ast(ASTNode* node, int level)
             break;
             
         case AST_VAR_DECL:
-            printf("VariableDecl(type %s, name %s, level %d)\n", 
-                node->as.var_decl.type.type,
-                node->as.var_decl.name, 
-                node->as.var_decl.type.pointer_level);
-            if (node->as.var_decl.initializer)
-                print_ast(node->as.var_decl.initializer, level + 1);
+            printf("VariableDecl(type: %s", node->as.var_decl.type.type);
+            if (node->as.var_decl.type.is_array) {
+                for(int i = 0; i < node->as.var_decl.type.array_dim_count; i++) {
+                    printf("[%d]", node->as.var_decl.type.array_sizes[i]);
+                }
+            }    
+            printf(", name: %s)\n", node->as.var_decl.name);
             break;
 
         case AST_UNARY_OP: {

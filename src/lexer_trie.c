@@ -42,6 +42,8 @@ TrieNode* build_operator_trie(TrieNode* root) {
     trie_insert(root, ")", TOK_RPAREN);
     trie_insert(root, "{", TOK_LBRACE);
     trie_insert(root, "}", TOK_RBRACE);
+    trie_insert(root, "[", TOK_LBRACKET);
+    trie_insert(root, "]", TOK_RBRACKET);
     trie_insert(root, ",", TOK_COMMA);
     trie_insert(root, ".", TOK_DOT);
     trie_insert(root, ";", TOK_SEMICOLON);

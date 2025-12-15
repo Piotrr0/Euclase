@@ -29,10 +29,16 @@ typedef enum {
     OP_POST_DEC,
 } UnaryOP;
 
+#define MAX_ARRAY_DIMS 8
+
 typedef struct TypeInfo {
     TokenType base_type;
     char* type;
     int pointer_level;
+
+    int is_array;
+    int array_dim_count;
+    int array_sizes[MAX_ARRAY_DIMS];
 } TypeInfo;
 
 

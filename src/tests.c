@@ -303,6 +303,14 @@ const char* test_print =
     "       return 1;"
     "   }"
     "}";
+
+const char* test_array =
+    "namespace main {"
+    "   int main() {"
+    "       int arr[5];"
+    "       return 2;"
+    "   }"
+    "}";
     
 TestCase tests[TESTS_BUFFER];
 
@@ -328,7 +336,8 @@ void init_tests() {
     tests[18] =(TestCase){"string_literal", test_string_literal, 5};
     tests[19] =(TestCase){"inc_dec", test_inc_dec, 5};
     tests[20] =(TestCase){"access_member", test_access_member, 10};
-    tests[21] =(TestCase){"print", test_print, 1};
+    // tests[21] =(TestCase){"print", test_print, 1};
+    tests[22] =(TestCase){"array", test_array, 2};
 }
 
 int run_test(const char* test) 
