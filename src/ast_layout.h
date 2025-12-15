@@ -200,6 +200,7 @@ ASTNode* create_cast_node(TypeInfo target_type, ASTNode* expr, int line, int col
 ASTNode* create_member_access_node(ASTNode* object, char* member, int line, int column);
 ASTNode* create_struct_decl_node(char* type, int line, int column);
 ASTNode* create_print_node(ASTNode* expr, int line, int column);
+ASTNode* create_array_access_node(ASTNode* target, ASTNode* index, int line, int column);
 
 void add_param_to_function(ASTNode* func, ASTNode* param);
 void add_member_to_struct(ASTNode* struct_decl, ASTNode* member);
