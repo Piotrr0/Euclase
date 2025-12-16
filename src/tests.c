@@ -308,7 +308,8 @@ const char* test_array =
     "namespace main {"
     "   int main() {"
     "       int arr[5];"
-    "       return 2;"
+    "       arr[1] = 2;"
+    "       return arr[1];"
     "   }"
     "}";
     

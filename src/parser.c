@@ -109,6 +109,11 @@ void free_ast(ASTNode* node) {
             free(node->as.struct_decl.type);
             free_node_array(node->as.struct_decl.members, node->as.struct_decl.member_count);
             break;
+
+        case AST_ARRAY_ACCESS:
+            free_ast(node->as.array_access.target);
+            free_ast(node->as.array_access.index);
+            break;
             
         default:
             break;
@@ -272,7 +277,9 @@ ASTNode* parse_assignment(Parser* parser)
     
     while (check(parser, TOK_ASSIGNMENT) || is_compound_token(current_token(parser)->type))
     {
-        if (left->type != AST_IDENTIFIER && left->type != AST_MEMBER_ACCESS && (left->type != AST_UNARY_OP || left->as.unary_op.op != OP_DEREF)) {
+        if (left->type != AST_IDENTIFIER && left->type != AST_MEMBER_ACCESS 
+            && (left->type != AST_UNARY_OP || left->as.unary_op.op != OP_DEREF) 
+            && left->type != AST_ARRAY_ACCESS) {
             free_ast(left);
             return NULL;
         }
@@ -322,7 +329,9 @@ ASTNode* parse_equality(Parser* parser)
     if (left == NULL) 
         return NULL;
 
-    while (check(parser, TOK_EQUAL) || check(parser, TOK_NOT_EQUAL) || check(parser, TOK_LESS) || check(parser, TOK_GREATER) || check(parser, TOK_LESS_EQUALS) || check(parser, TOK_GREATER_EQUALS))
+    while (check(parser, TOK_EQUAL) || check(parser, TOK_NOT_EQUAL) 
+        || check(parser, TOK_LESS) || check(parser, TOK_GREATER) 
+        || check(parser, TOK_LESS_EQUALS) || check(parser, TOK_GREATER_EQUALS))
     {
         TokenType op = current_token(parser)->type;
         advance(parser);
@@ -511,29 +520,37 @@ ASTNode* parse_postfix(Parser* parser)
     else
          node = parse_primary(parser);
 
-    while (check(parser, TOK_DOT)) {
-        advance(parser);
-        
-        if (!check(parser, TOK_IDENTIFIER)) {
-            free_ast(node);
-            return NULL;
-        }
-        
-        ASTNode* member_access = create_member_access_node(node, sv_to_owned_cstr(current_token(parser)->lexeme), current_token(parser)->line, current_token(parser)->column);
-        if (member_access == NULL) {
-            free_ast(node);
-            return NULL;
-        }
+    // arr[0].x[1]++ ??
+    while (check(parser, TOK_DOT) || check(parser, TOK_LBRACKET) || 
+           check(parser, TOK_INCREMENT) || check(parser, TOK_DECREMENT)) 
+    {
+        if (match(parser, TOK_DOT)) {
+            if (!check(parser, TOK_IDENTIFIER)) 
+                return NULL;
 
-        advance(parser);
-        node = member_access;
+            node = create_member_access_node(node, sv_to_owned_cstr(current_token(parser)->lexeme), 0, 0); // simplifed
+            advance(parser);
+        }
+        else if (match(parser, TOK_LBRACKET)) {
+            ASTNode* index = parse_expression(parser);
+            if (index == NULL) {
+                free_ast(node);
+                return NULL;
+            }
+
+            if (!match(parser, TOK_RBRACKET)) {
+                free_ast(node);
+                free_ast(index);
+                return NULL;
+            }
+            node = create_array_access_node(node, index, current_token(parser)->line, current_token(parser)->column);
+        }
+        else if (check(parser, TOK_INCREMENT))
+            node = parse_post_increment(parser, node);
+        else if (check(parser, TOK_DECREMENT))
+            node = parse_post_decrement(parser, node);
     }
-    
-    if (check(parser, TOK_INCREMENT))
-        node = parse_post_increment(parser, node);
-    else if (check(parser, TOK_DECREMENT))
-        node = parse_post_decrement(parser, node);
-    
+
     return node;
 }
 
@@ -1029,8 +1046,7 @@ ASTNode* parse_variable_declaration(Parser* parser) {
 
     advance(parser);
 
-    while (check(parser, TOK_LBRACKET)) {
-        advance(parser);
+    while (match(parser, TOK_LBRACKET)) {
         type.is_array = 1;
 
         if (type.array_dim_count >= MAX_ARRAY_DIMS) {
@@ -1040,9 +1056,7 @@ ASTNode* parse_variable_declaration(Parser* parser) {
 
         if (check(parser, TOK_NUMBER_INT)) {
             char* size_str = sv_to_owned_cstr(current_token(parser)->lexeme);
-            type.array_sizes[type.array_dim_count] = atoi(size_str);
-            type.array_dim_count++;
-            
+            type.array_sizes[type.array_dim_count++] = atoi(size_str);            
             free(size_str);
             advance(parser);
         } 
@@ -1583,7 +1597,16 @@ void print_ast(ASTNode* node, int level)
             if (node->as.member_access.object)
                 print_ast(node->as.member_access.object, level + 1);
             break;
+        case AST_ARRAY_ACCESS:
+            printf("ArrayAccess\n");    
+            for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Target:\n");
+            print_ast(node->as.array_access.target, level + 2);
             
+            for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Index:\n");
+            print_ast(node->as.array_access.index, level + 2);
+            break;
         case AST_CAST:
             printf("Cast(to %s", token_type_name(node->as.cast.target_type.base_type));
             if (node->as.cast.target_type.pointer_level > 0) {
