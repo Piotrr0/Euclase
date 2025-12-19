@@ -19,5 +19,6 @@ LLVMValueRef visit_array_access_expr(CodegenVisitor* visitor, ASTNode* node);
 
 int are_types_compatible(LLVMTypeRef form_type, LLVMTypeRef to_type);
 LLVMValueRef generate_cast_instruction(CodegenVisitor* visitor, LLVMValueRef value, LLVMTypeRef from_type, LLVMTypeRef to_type, const char* name);
+LLVMValueRef get_array_element_ptr(CodegenVisitor* visitor, ASTNode* target, LLVMValueRef index_val, LLVMTypeRef* out_elem_type);
 
 #endif
