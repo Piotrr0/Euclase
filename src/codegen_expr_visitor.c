@@ -205,3 +205,51 @@ LLVMValueRef visit_member_access_expr(CodegenVisitor* visitor, ASTNode* node) {
     LLVMTypeRef member_type = LLVMStructGetTypeAtIndex(struct_type, member_index);
     return LLVMBuildLoad2(visitor->ctx->builder, member_type, member_ptr, "member_value");
 }
+
+LLVMValueRef get_array_element_ptr(CodegenVisitor* visitor, ASTNode* target, LLVMValueRef index_val, LLVMTypeRef* out_elem_type) {
+    if (target->type == AST_IDENTIFIER) {
+        const char* name = target->as.identifier.name;
+        SymbolEntry* entry = lookup_symbol(visitor->ctx->symbol_table, name);
+        if (entry == NULL || entry->symbol_data.kind != SYMBOL_VARIABLE) {
+            return NULL;
+        }
+
+        VariableSymbolData* var_data = &entry->symbol_data.as.variable;
+        LLVMValueRef base_ptr = var_data->alloc;        
+        LLVMTypeRef base_type = build_type_from_info(visitor->ctx, &var_data->type);
+        
+        *out_elem_type = get_element_type_from_info(visitor, var_data->type);
+        if (*out_elem_type == NULL) 
+            return NULL;
+
+        if (var_data->type.is_array) {
+            LLVMValueRef indices[] = { 
+                LLVMConstInt(LLVMInt32TypeInContext(visitor->ctx->context), 0, 0), 
+                index_val 
+            };
+            return LLVMBuildGEP2(visitor->ctx->builder, base_type, base_ptr, indices, 2, "array_gep");
+        } 
+        else {
+            LLVMValueRef loaded_ptr = LLVMBuildLoad2(visitor->ctx->builder, base_type, base_ptr, "ptr_load");
+            LLVMValueRef indices[] = { index_val };
+            return LLVMBuildGEP2(visitor->ctx->builder, *out_elem_type, loaded_ptr, indices, 1, "ptr_gep");
+        }
+    }
+    return NULL;
+}
+
+LLVMValueRef visit_array_access_expr(CodegenVisitor* visitor, ASTNode* node) {
+    ASTNode* target = node->as.array_access.target;
+    ASTNode* index = node->as.array_access.index;
+    
+    LLVMValueRef index_val = visit_expression(visitor, index);
+    if (index_val == NULL) 
+        return NULL;
+
+    LLVMTypeRef elem_type = NULL;
+    LLVMValueRef element_ptr = get_array_element_ptr(visitor, target, index_val, &elem_type);
+    if (element_ptr == NULL || elem_type == NULL)
+        return NULL;
+
+    return LLVMBuildLoad2(visitor->ctx->builder, elem_type, element_ptr, "array_load");
+}

@@ -1,4 +1,6 @@
 #include "codegen_stmt_visitor.h"
+#include "codegen_expr_visitor.h"
+#include "parser.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -198,6 +200,22 @@ void assign_to_member_access(CodegenVisitor* visitor, ASTNode* lhs, LLVMValueRef
     LLVMBuildStore(visitor->ctx->builder, new_val, member_ptr);
 }
 
+void assign_to_array_access(CodegenVisitor* visitor, ASTNode* lhs, LLVMValueRef new_val) {
+    ASTNode* target = lhs->as.array_access.target;
+    ASTNode* index_node = lhs->as.array_access.index;
+
+    LLVMValueRef index_val = visit_expression(visitor, index_node);
+    if (index_val == NULL) 
+        return;
+
+    LLVMTypeRef elem_type = NULL;
+    LLVMValueRef element_ptr = get_array_element_ptr(visitor, target, index_val, &elem_type);
+
+    if (element_ptr == NULL)
+        return;
+    LLVMBuildStore(visitor->ctx->builder, new_val, element_ptr);
+}
+
 void visit_assign_stmt(CodegenVisitor* visitor, ASTNode* node)
 {
     AssignNode assign_node = node->as.assign;
@@ -219,6 +237,7 @@ void visit_assign_stmt(CodegenVisitor* visitor, ASTNode* node)
             break;
 
         case AST_MEMBER_ACCESS: assign_to_member_access(visitor, lhs, new_val); break;
+        case AST_ARRAY_ACCESS:  assign_to_array_access(visitor, lhs, new_val); break;
         default: break;
     }
 }

@@ -1468,6 +1468,12 @@ void print_ast(ASTNode* node, int level)
                 }
             }    
             printf(", name: %s)\n", node->as.var_decl.name);
+
+            if (node->as.var_decl.initializer) {
+                for (int i = 0; i < level + 1; i++) printf("  ");
+                printf("Initializer:\n");
+                print_ast(node->as.var_decl.initializer, level + 2);
+            }
             break;
 
         case AST_UNARY_OP: {
