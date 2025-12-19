@@ -36,6 +36,7 @@ typedef struct CodegenVisitor {
     ExprVisitorFn visit_func_call;
     ExprVisitorFn visit_cast;
     ExprVisitorFn visit_member_access;
+    ExprVisitorFn visit_array_access;
 
     StmtVisitorFn visit_return;
     StmtVisitorFn visit_if;
@@ -63,6 +64,7 @@ void visit_declaration(CodegenVisitor* visitor, ASTNode* node);
 
 LLVMTypeRef token_type_to_llvm_type(CodegenContext* ctx, TokenType type);
 LLVMTypeRef build_type_from_info(CodegenContext* ctx, TypeInfo* type_info);
+LLVMTypeRef get_element_type_from_info(CodegenVisitor* visitor, TypeInfo type_info);
 
 LLVMValueRef get_printf_func(CodegenContext* ctx);
 void visit_print_stmt(CodegenVisitor* visitor, ASTNode* node);

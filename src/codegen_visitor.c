@@ -2,6 +2,7 @@
 #include "codegen_expr_visitor.h"
 #include "codegen_stmt_visitor.h"
 #include "codegen_decl_visitor.h"
+#include "parser.h"
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Target.h>
 #include <stdio.h>
@@ -63,6 +64,8 @@ CodegenVisitor* create_codegen_visitor(const char* module_name) {
     visitor->visit_func_call = visit_func_call_expr;
     visitor->visit_cast = visit_cast_expr;
     visitor->visit_member_access = visit_member_access_expr;
+    visitor->visit_array_access = visit_array_access_expr;
+
 
     visitor->visit_return = visit_return_stmt;
     visitor->visit_if = visit_if_stmt;
@@ -108,6 +111,7 @@ LLVMValueRef visit_expression(CodegenVisitor* visitor, ASTNode* node) {
         case AST_UNARY_OP:          return visitor->visit_unary_op(visitor, node);
         case AST_BINARY_OP:         return visitor->visit_binary_op(visitor, node);
         case AST_MEMBER_ACCESS:     return visitor->visit_member_access(visitor, node);
+        case AST_ARRAY_ACCESS:      return visitor->visit_array_access(visitor, node);
         default:                    printf("Unhandled expression type: %d\n", node->type); return NULL;
     }
 }
@@ -182,6 +186,28 @@ LLVMTypeRef build_type_from_info(CodegenContext* ctx, TypeInfo* type_info)
     }
 
     return base_type;
+}
+
+LLVMTypeRef get_element_type_from_info(CodegenVisitor* visitor, TypeInfo type_info) {
+    TypeInfo elem_info = type_info;
+
+    if (elem_info.is_array)
+    {
+        if (elem_info.array_dim_count > 1) {
+            for (int i = 0; i < elem_info.array_dim_count - 1; i++) {
+                elem_info.array_sizes[i] = elem_info.array_sizes[i + 1];
+            }
+            elem_info.array_dim_count--;
+        }
+        else {
+            elem_info.is_array = 0;
+            elem_info.array_dim_count = 0;
+        }
+    } 
+    else if (elem_info.pointer_level > 0) {
+        elem_info.pointer_level--;
+    }
+    return build_type_from_info(visitor->ctx, &elem_info);
 }
 
 void generate_llvm_ir_visitor(ASTNode* ast, const char* module_name, const char* output_filename)
